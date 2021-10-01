@@ -957,12 +957,6 @@ impl Ledger {
 
     pub fn can_send(&self, principal_id: &PrincipalId) -> bool {
         return true;
-        // principal_id.is_self_authenticating()
-        //     || LEDGER
-        //         .read()
-        //         .unwrap()
-        //         .send_whitelist
-        //         .contains(&CanisterId::new(*principal_id).unwrap())
     }
 
     pub fn transactions_by_hash_len(&self) -> usize {
