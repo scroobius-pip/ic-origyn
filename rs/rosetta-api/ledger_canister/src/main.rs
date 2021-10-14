@@ -595,9 +595,19 @@ fn block_() {
     over(protobuf, |BlockArg(height)| BlockRes(block(height)));
 }
 
+#[export_name = "canister_query block_dfx"]
+fn block_dfx_() {
+    over(candid_one, |BlockArg(height)| BlockRes(block(height)));
+}
+
 #[export_name = "canister_query tip_of_chain_pb"]
 fn tip_of_chain_() {
     over(protobuf, |protobuf::TipOfChainRequest {}| tip_of_chain());
+}
+
+#[export_name = "canister_query tip_of_chain_dfx"]
+fn tip_of_chain_dfx_() {
+    over(candid_one, |TipOfChainArgs {}| tip_of_chain());
 }
 
 #[export_name = "canister_query get_archive_index_pb"]
@@ -646,6 +656,11 @@ fn account_balance_dfx_() {
 #[export_name = "canister_query total_supply_pb"]
 fn total_supply_() {
     over(protobuf, |_: TotalSupplyArgs| total_supply())
+}
+
+#[export_name = "canister_query total_supply_dfx"]
+fn total_supply_dfx_() {
+    over(candid_one, |_: TotalSupplyArgs| total_supply())
 }
 
 /// Get multiple blocks by *offset into the container* (not BlockHeight) and

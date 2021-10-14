@@ -955,7 +955,7 @@ impl Ledger {
         Some((blocks_to_archive, self.blockchain.archive.clone()))
     }
 
-    pub fn can_send(&self, principal_id: &PrincipalId) -> bool {
+    pub fn can_send(&self, _principal_id: &PrincipalId) -> bool {
         return true;
     }
 
@@ -1681,6 +1681,10 @@ pub struct NotifyCanisterArgs {
     pub to_subaccount: Option<Subaccount>,
 }
 
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct TipOfChainArgs {}
+
 impl NotifyCanisterArgs {
     /// Construct a `notify` call to notify a canister about the
     /// transaction created by a previous `send` call. `block_height`
@@ -1727,6 +1731,7 @@ impl AccountBalanceArgs {
 pub struct TotalSupplyArgs {}
 
 /// Argument returned by the tip_of_chain endpoint
+#[derive(CandidType)]
 pub struct TipOfChainRes {
     pub certification: Option<Vec<u8>>,
     pub tip_index: BlockHeight,
@@ -1759,7 +1764,10 @@ impl IterBlocksArgs {
 pub struct IterBlocksRes(pub Vec<EncodedBlock>);
 
 // These is going away soon
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct BlockArg(pub BlockHeight);
+
+#[derive(CandidType)]
 pub struct BlockRes(pub Option<Result<EncodedBlock, CanisterId>>);
 
 // A helper function for ledger/get_blocks and archive_node/get_blocks endpoints
