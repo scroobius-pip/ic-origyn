@@ -595,9 +595,41 @@ fn block_() {
     over(protobuf, |BlockArg(height)| BlockRes(block(height)));
 }
 
+async fn _get_block_dfx(height: u64) -> Result<Result<Block, CanisterId>, String> {
+    // let BlockRes(res) =
+    //     call_with_cleanup(cid, "block_pb", protobuf, BlockArg(height))
+    //         .await
+    //         .map_err(|e| format!("Failed to fetch block {}", e.1))?;
+    // match res.ok_or("Block not found")? {
+    //     Ok(raw_block) => {
+    //         let block = raw_block.decode().unwrap();
+    //         Ok(Ok(block))
+    //     }
+    //     Err(canister_id) => Ok(Err(canister_id)),
+    // }
+    let raw_block: EncodedBlock =
+        match block(height).unwrap_or_else(|| panic!("Block {} not found", height)) {
+            Ok(raw_block) => raw_block,
+            Err(cid) => {
+                print(format!(
+                    "Searching canister {} for block {}",
+                    cid, height
+                ));
+                // Lookup the block on the archive
+                let BlockRes(res) = call_with_cleanup(cid, "get_block_pb", protobuf, height)
+                    .await
+                    .map_err(|e| format!("Failed to fetch block {}", e.1))?;
+                res.ok_or("Block not found")?
+                    .map_err(|c| format!("Tried to redirect lookup a second time to {}", c))?
+            }
+        };
+        let block = raw_block.decode().unwrap();
+        Ok(Ok(block))
+}
+
 #[export_name = "canister_query block_dfx"]
 fn block_dfx_() {
-    over(candid_one, |BlockArg(height)| BlockRes(block(height)));
+    over_async(candid_one, |height| _get_block_dfx(height))
 }
 
 #[export_name = "canister_query tip_of_chain_pb"]
