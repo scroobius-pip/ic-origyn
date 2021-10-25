@@ -9,6 +9,7 @@ use dfn_core::{
 };
 use dfn_protobuf::{protobuf, ProtoBuf};
 use ic_types::CanisterId;
+use ic_types::PrincipalId;
 use ledger_canister::*;
 use on_wire::IntoWire;
 use std::time::Duration;
@@ -47,6 +48,7 @@ fn init(
     transaction_window: Option<Duration>,
     archive_options: Option<archive::ArchiveOptions>,
     send_whitelist: HashSet<CanisterId>,
+    admin: PrincipalId,
 ) {
     print(format!(
         "[ledger] init(): minting account is {}",
@@ -58,6 +60,7 @@ fn init(
         dfn_core::api::now().into(),
         transaction_window,
         send_whitelist,
+        admin,
     );
     match max_message_size_bytes {
         None => {
@@ -395,6 +398,7 @@ fn main() {
              transaction_window,
              archive_options,
              send_whitelist,
+             admin,
          })| {
             init(
                 minting_account,
@@ -403,6 +407,7 @@ fn main() {
                 transaction_window,
                 archive_options,
                 send_whitelist,
+                admin,
             )
         },
     )
@@ -518,6 +523,54 @@ fn send_() {
              to,
              created_at_time,
          }| { send(memo, amount, fee, from_subaccount, to, created_at_time) },
+    );
+}
+
+async fn set_send_whitelist(
+    new_send_whitelist: HashSet<CanisterId>,
+ ) {
+     let caller_principal_id = caller();
+ 
+     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+         panic!(
+             "Not authorized {}",
+             caller_principal_id
+         );
+     };
+ 
+     ledger_canister::set_send_whitelist(new_send_whitelist);
+     ()
+ }
+
+ async fn set_admin(
+    new_admin: PrincipalId,
+ ) {
+     let caller_principal_id = caller();
+ 
+     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+         panic!(
+             "Not authorized {}",
+             caller_principal_id
+         );
+     };
+ 
+     ledger_canister::set_admin(new_admin);
+     ()
+ }
+
+ #[export_name = "canister_update set_send_whitelist_dfx"]
+ fn set_send_whitelist_dfx_() {
+     over_async(
+         candid_one,
+         |new_send_whitelist: HashSet<CanisterId>| { set_send_whitelist(new_send_whitelist) },
+     );
+ }
+
+ #[export_name = "canister_update set_admin_dfx"]
+fn set_admin_dfx_() {
+    over_async(
+        candid_one,
+        |new_admin: PrincipalId| { set_admin(new_admin) },
     );
 }
 
