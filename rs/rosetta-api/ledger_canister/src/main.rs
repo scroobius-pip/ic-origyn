@@ -48,11 +48,15 @@ fn init(
     transaction_window: Option<Duration>,
     archive_options: Option<archive::ArchiveOptions>,
     send_whitelist: HashSet<CanisterId>,
-    admin: PrincipalId,
 ) {
     print(format!(
         "[ledger] init(): minting account is {}",
         minting_account
+    ));
+    let caller_principal_id = caller();
+    print(format!(
+        "[ledger] init(): caller {}",
+        caller_principal_id
     ));
     LEDGER.write().unwrap().from_init(
         initial_values,
@@ -60,7 +64,7 @@ fn init(
         dfn_core::api::now().into(),
         transaction_window,
         send_whitelist,
-        admin,
+        caller_principal_id,
     );
     match max_message_size_bytes {
         None => {
@@ -398,7 +402,6 @@ fn main() {
              transaction_window,
              archive_options,
              send_whitelist,
-             admin,
          })| {
             init(
                 minting_account,
@@ -407,7 +410,6 @@ fn main() {
                 transaction_window,
                 archive_options,
                 send_whitelist,
-                admin,
             )
         },
     )
@@ -526,53 +528,64 @@ fn send_() {
     );
 }
 
-async fn set_send_whitelist(
-    new_send_whitelist: HashSet<CanisterId>,
- ) {
-     let caller_principal_id = caller();
- 
-     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
-         panic!(
-             "Not authorized {}",
-             caller_principal_id
-         );
-     };
- 
-     ledger_canister::set_send_whitelist(new_send_whitelist);
-     ()
- }
+// async fn set_send_whitelist(new_send_whitelist: HashSet<CanisterId>) {
+//     let caller_principal_id = caller();
 
- async fn set_admin(
-    new_admin: PrincipalId,
- ) {
-     let caller_principal_id = caller();
- 
-     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
-         panic!(
-             "Not authorized {}",
-             caller_principal_id
-         );
-     };
- 
-     ledger_canister::set_admin(new_admin);
-     ()
- }
+//     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+//         panic!("Not authorized {}", caller_principal_id);
+//     };
 
- #[export_name = "canister_update set_send_whitelist_dfx"]
- fn set_send_whitelist_dfx_() {
-     over_async(
-         candid_one,
-         |new_send_whitelist: HashSet<CanisterId>| { set_send_whitelist(new_send_whitelist) },
-     );
- }
+//     ledger_canister::set_send_whitelist(new_send_whitelist);
+//     ()
+// }
 
- #[export_name = "canister_update set_admin_dfx"]
-fn set_admin_dfx_() {
-    over_async(
-        candid_one,
-        |new_admin: PrincipalId| { set_admin(new_admin) },
-    );
-}
+// async fn set_admin(new_admin: PrincipalId) {
+//     let caller_principal_id = caller();
+
+//     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+//         panic!("Not authorized {}", caller_principal_id);
+//     };
+
+//     ledger_canister::set_admin(new_admin);
+//     ()
+// }
+
+// async fn set_minting_account_id(new_minting_account: AccountIdentifier) {
+//     let caller_principal_id = caller();
+
+//     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+//         panic!("Not authorized {}", caller_principal_id);
+//     };
+
+//     ledger_canister::set_minting_account_id(new_minting_account);
+//     ()
+// }
+
+// #[export_name = "canister_update set_send_whitelist_dfx"]
+// fn set_send_whitelist_dfx_() {
+//     over_async(candid_one, |new_send_whitelist: HashSet<CanisterId>| {
+//         set_send_whitelist(new_send_whitelist)
+//     });
+// }
+
+// #[export_name = "canister_update set_minting_account_id_dfx"]
+// fn set_minting_account_dfx_() {
+//     over_async(candid_one, |new_minting_account: AccountIdentifier| {
+//         set_minting_account_id(new_minting_account)
+//     });
+// }
+
+// #[export_name = "canister_query get_minting_account_id_dfx"]
+// fn get_minting_account_dfx_() {
+//     over(candid_one, |()| {
+//         ledger_canister::get_minting_account_id()
+//     });
+// }
+
+// #[export_name = "canister_update set_admin_dfx"]
+// fn set_admin_dfx_() {
+//     over_async(candid_one, |new_admin: PrincipalId| set_admin(new_admin));
+// }
 
 /// Do not use call this from code, this is only here so dfx has something to
 /// call when making a payment. This will be changed in ways that are not
@@ -653,6 +666,16 @@ fn block_dfx_() {
     over(candid_one, |BlockArg(height)| BlockRes(block(height)));
 }
 
+#[export_name = "canister_query get_send_whitelist_dfx"]
+fn get_send_whitelist_dfx_() {
+    over(candid_one, |()| ledger_canister::get_send_whitelist());
+}
+
+#[export_name = "canister_query get_admin_dfx"]
+fn get_admin_dfx_() {
+    over(candid_one, |()| ledger_canister::get_admin());
+}
+
 #[export_name = "canister_query tip_of_chain_pb"]
 fn tip_of_chain_() {
     over(protobuf, |protobuf::TipOfChainRequest {}| tip_of_chain());
@@ -660,7 +683,7 @@ fn tip_of_chain_() {
 
 #[export_name = "canister_query tip_of_chain_dfx"]
 fn tip_of_chain_dfx_() {
-    over(candid_one, |TipOfChainArgs {}| tip_of_chain());
+    over(candid_one, |()| tip_of_chain());
 }
 
 #[export_name = "canister_query get_archive_index_pb"]
@@ -713,7 +736,7 @@ fn total_supply_() {
 
 #[export_name = "canister_query total_supply_dfx"]
 fn total_supply_dfx_() {
-    over(candid_one, |_: TotalSupplyArgs| total_supply())
+    over(candid_one, |()| total_supply())
 }
 
 /// Get multiple blocks by *offset into the container* (not BlockHeight) and

@@ -157,7 +157,9 @@ impl<'de, T> Deserialize<'de> for HashOf<T> {
     }
 }
 
-#[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
 #[serde(transparent)]
 pub struct EncodedBlock(pub Box<[u8]>);
 
@@ -369,7 +371,9 @@ impl LedgerBalances {
 }
 
 /// An operation which modifies account balances
-#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub enum Transfer {
     Burn {
         from: AccountIdentifier,
@@ -388,7 +392,9 @@ pub enum Transfer {
 }
 
 /// A transfer with the metadata the client generated attached to it
-#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct Transaction {
     pub transfer: Transfer,
     pub memo: Memo,
@@ -825,6 +831,10 @@ impl Ledger {
         send_whitelist: HashSet<CanisterId>,
         admin: PrincipalId,
     ) {
+        print(format!(
+            "[ledger] from_init(): admin {}",
+            admin
+        ));
         self.balances.icpt_pool = ICPTs::MAX;
         self.minting_account_id = Some(minting_account);
         self.admin = admin;
@@ -964,6 +974,22 @@ impl Ledger {
         self.send_whitelist = new_send_whitelist;
     }
 
+    pub fn get_send_whitelist(&self) -> HashSet<CanisterId> {
+        self.send_whitelist.clone() // .into_iter().collect()
+    }
+
+    pub fn set_minting_account_id(&mut self, new_minting_account: AccountIdentifier) {
+        self.minting_account_id = Some(new_minting_account);
+    }
+
+    pub fn get_minting_account_id(&self) -> Option<AccountIdentifier> {
+        self.minting_account_id
+    }
+
+    pub fn get_admin(&self) -> PrincipalId {
+        self.admin
+    }
+
     pub fn set_admin(&mut self, new_admin: PrincipalId) {
         self.admin = new_admin;
     }
@@ -996,19 +1022,32 @@ lazy_static! {
     pub static ref MAX_MESSAGE_SIZE_BYTES: RwLock<usize> = RwLock::new(1024 * 1024);
 }
 
-pub fn set_send_whitelist(
-    new_send_whitelist: HashSet<CanisterId>,
-) {
-    LEDGER.write().unwrap().set_send_whitelist(new_send_whitelist)
+pub fn set_send_whitelist(new_send_whitelist: HashSet<CanisterId>) {
+    LEDGER
+        .write()
+        .unwrap()
+        .set_send_whitelist(new_send_whitelist)
 }
 
-pub fn set_admin(
-    new_admin: PrincipalId,
-) {
+pub fn get_send_whitelist() -> HashSet<CanisterId> {
+    LEDGER.read().unwrap().get_send_whitelist()
+}
+
+pub fn get_admin() -> PrincipalId {
+    LEDGER.read().unwrap().get_admin()
+}
+
+pub fn set_minting_account_id(new_minting_account: AccountIdentifier) {
+    LEDGER.write().unwrap().set_minting_account_id(new_minting_account)
+}
+
+pub fn set_admin(new_admin: PrincipalId) {
     LEDGER.write().unwrap().set_admin(new_admin)
 }
 
-
+pub fn get_minting_account_id() -> Option<AccountIdentifier> {
+    LEDGER.read().unwrap().get_minting_account_id()
+}
 
 pub fn add_payment(
     memo: Memo,
@@ -1049,7 +1088,6 @@ pub struct LedgerCanisterInitPayload {
     pub transaction_window: Option<Duration>,
     pub archive_options: Option<ArchiveOptions>,
     pub send_whitelist: HashSet<CanisterId>,
-    pub admin: PrincipalId,
 }
 
 impl LedgerCanisterInitPayload {
@@ -1060,7 +1098,6 @@ impl LedgerCanisterInitPayload {
         max_message_size_bytes: Option<usize>,
         transaction_window: Option<Duration>,
         send_whitelist: HashSet<CanisterId>,
-        admin: PrincipalId,
     ) -> Self {
         // verify ledger's invariant about the maximum amount
         let _can_sum = initial_values.values().fold(ICPTs::ZERO, |acc, x| {
@@ -1077,7 +1114,6 @@ impl LedgerCanisterInitPayload {
             transaction_window,
             archive_options,
             send_whitelist,
-            admin,
         }
     }
 }
@@ -1314,6 +1350,7 @@ mod tests {
             SystemTime::UNIX_EPOCH.into(),
             None,
             HashSet::new(),
+            PrincipalId::new_user_test_id(0).into(),
         );
 
         let txn = Transaction::new(
@@ -1561,6 +1598,7 @@ mod tests {
             SystemTime::UNIX_EPOCH.into(),
             None,
             HashSet::new(),
+            PrincipalId::new_user_test_id(0).into(),
         );
 
         for i in 0..10 {
@@ -1651,6 +1689,7 @@ mod tests {
             genesis,
             Some(Duration::from_millis(10)),
             HashSet::new(),
+            PrincipalId::new_user_test_id(0).into(),
         );
         let little_later = genesis + Duration::from_millis(1);
 
