@@ -29,7 +29,7 @@ pub const ICP_SUBDIVIDABLE_BY: u64 = 100_000_000;
 
 /// This is 1/10,000th of an ICP, this is probably more than it costs us to
 /// store a transaction so it will likely come down in the future
-pub const TRANSACTION_FEE: ICPTs = ICPTs { e8s: 10_000 };
+pub const TRANSACTION_FEE: ICPTs = ICPTs { e8s: 200_000 };
 pub const MIN_BURN_AMOUNT: ICPTs = TRANSACTION_FEE;
 
 impl ICPTs {
@@ -41,7 +41,7 @@ impl ICPTs {
     /// This function will not allow you use more than 1 ICPTs worth of E8s.
     pub fn new(icpt: u64, e8s: u64) -> Result<Self, String> {
         static CONSTRUCTION_FAILED: &str =
-            "Constructing ICP failed because the underlying u64 overflowed";
+            "Constructing OGY failed because the underlying u64 overflowed";
 
         let icp_part = icpt
             .checked_mul(ICP_SUBDIVIDABLE_BY)
@@ -130,7 +130,7 @@ impl Add for ICPTs {
     fn add(self, other: Self) -> Self::Output {
         let e8s = self.e8s.checked_add(other.e8s).ok_or_else(|| {
             format!(
-                "Add ICP {} + {} failed because the underlying u64 overflowed",
+                "Add OGY {} + {} failed because the underlying u64 overflowed",
                 self.e8s, other.e8s
             )
         })?;
@@ -150,7 +150,7 @@ impl Sub for ICPTs {
     fn sub(self, other: Self) -> Self::Output {
         let e8s = self.e8s.checked_sub(other.e8s).ok_or_else(|| {
             format!(
-                "Subtracting ICP {} - {} failed because the underlying u64 underflowed",
+                "Subtracting OGY {} - {} failed because the underlying u64 underflowed",
                 self.e8s, other.e8s
             )
         })?;
@@ -168,13 +168,13 @@ impl SubAssign for ICPTs {
 /// # use ledger_canister::ICPTs;
 /// let icpt = ICPTs::new(12, 200).unwrap();
 /// let s = format!("{}", icpt);
-/// assert_eq!(&s[..], "12.00000200 ICP")
+/// assert_eq!(&s[..], "12.00000200 OGY")
 /// ```
 impl fmt::Display for ICPTs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}.{:08} ICP",
+            "{}.{:08} OGY",
             self.get_icpts(),
             self.get_remainder_e8s()
         )
