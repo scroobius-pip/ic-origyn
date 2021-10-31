@@ -1768,6 +1768,18 @@ pub struct NotifyCanisterArgs {
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct TipOfChainArgs {}
 
+/// Argument taken by get_admin_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetAdminArgs {}
+
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetSendWhitelistArgs {}
+
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetMintingAccountArgs {}
+
 impl NotifyCanisterArgs {
     /// Construct a `notify` call to notify a canister about the
     /// transaction created by a previous `send` call. `block_height`
