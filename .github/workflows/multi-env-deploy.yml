@@ -1,0 +1,37 @@
+name: IC - Build n Deploy
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      # Caching rust deps
+      - uses: Swatinem/rust-cache@v1
+        with:
+          working-directory: rs
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: wasm32-unknown-unknown
+
+      - name: Install dependencies
+        run: |
+          ./scripts/dfx-install-script.sh
+        working-directory: rs/rosetta-api/ledger_canister
+
+      - name: deploy to cluster
+        run: |
+          ./ledger_canister/scripts/deploy.sh
+        env:
+          DFX_IDENTITY: ${{ secrets.DFX_IDENTITY }}
+        working-directory: rs/rosetta-api

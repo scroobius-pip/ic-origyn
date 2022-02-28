@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "canisters": {
+    "ledger": {
+      "type": "custom",
+      "candid": "ledger.did",
+      "wasm": "../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wasm",
+      "build": "./ledger_canister/build_archive_node.sh"
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8000",
+      "type": "ephemeral"
+    }
+  }
+}
