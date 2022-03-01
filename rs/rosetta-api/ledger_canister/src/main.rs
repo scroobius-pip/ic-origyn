@@ -9,6 +9,7 @@ use dfn_core::{
 };
 use dfn_protobuf::{protobuf, ProtoBuf};
 use ic_types::CanisterId;
+use ic_types::PrincipalId;
 use ledger_canister::*;
 use on_wire::IntoWire;
 use std::time::Duration;
@@ -47,6 +48,7 @@ fn init(
     transaction_window: Option<Duration>,
     archive_options: Option<archive::ArchiveOptions>,
     send_whitelist: HashSet<CanisterId>,
+    admin: PrincipalId,
 ) {
     print(format!(
         "[ledger] init(): minting account is {}",
@@ -58,6 +60,7 @@ fn init(
         dfn_core::api::now().into(),
         transaction_window,
         send_whitelist,
+        admin,
     );
     match max_message_size_bytes {
         None => {
@@ -395,6 +398,7 @@ fn main() {
              transaction_window,
              archive_options,
              send_whitelist,
+             admin,
          })| {
             init(
                 minting_account,
@@ -403,6 +407,7 @@ fn main() {
                 transaction_window,
                 archive_options,
                 send_whitelist,
+                admin,
             )
         },
     )
@@ -521,6 +526,54 @@ fn send_() {
     );
 }
 
+async fn set_send_whitelist(
+    new_send_whitelist: HashSet<CanisterId>,
+ ) {
+     let caller_principal_id = caller();
+ 
+     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+         panic!(
+             "Not authorized {}",
+             caller_principal_id
+         );
+     };
+ 
+     ledger_canister::set_send_whitelist(new_send_whitelist);
+     ()
+ }
+
+ async fn set_admin(
+    new_admin: PrincipalId,
+ ) {
+     let caller_principal_id = caller();
+ 
+     if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
+         panic!(
+             "Not authorized {}",
+             caller_principal_id
+         );
+     };
+ 
+     ledger_canister::set_admin(new_admin);
+     ()
+ }
+
+ #[export_name = "canister_update set_send_whitelist_dfx"]
+ fn set_send_whitelist_dfx_() {
+     over_async(
+         candid_one,
+         |new_send_whitelist: HashSet<CanisterId>| { set_send_whitelist(new_send_whitelist) },
+     );
+ }
+
+ #[export_name = "canister_update set_admin_dfx"]
+fn set_admin_dfx_() {
+    over_async(
+        candid_one,
+        |new_admin: PrincipalId| { set_admin(new_admin) },
+    );
+}
+
 /// Do not use call this from code, this is only here so dfx has something to
 /// call when making a payment. This will be changed in ways that are not
 /// backwards compatible with previous interfaces.
@@ -595,9 +648,51 @@ fn block_() {
     over(protobuf, |BlockArg(height)| BlockRes(block(height)));
 }
 
+async fn _get_block_dfx(height: u64) -> Result<Result<Block, CanisterId>, String> {
+    // let BlockRes(res) =
+    //     call_with_cleanup(cid, "block_pb", protobuf, BlockArg(height))
+    //         .await
+    //         .map_err(|e| format!("Failed to fetch block {}", e.1))?;
+    // match res.ok_or("Block not found")? {
+    //     Ok(raw_block) => {
+    //         let block = raw_block.decode().unwrap();
+    //         Ok(Ok(block))
+    //     }
+    //     Err(canister_id) => Ok(Err(canister_id)),
+    // }
+    let raw_block: EncodedBlock =
+        match block(height).unwrap_or_else(|| panic!("Block {} not found", height)) {
+            Ok(raw_block) => raw_block,
+            Err(cid) => {
+                print(format!(
+                    "Searching canister {} for block {}",
+                    cid, height
+                ));
+                // Lookup the block on the archive
+                let BlockRes(res) = call_with_cleanup(cid, "get_block_pb", protobuf, height)
+                    .await
+                    .map_err(|e| format!("Failed to fetch block {}", e.1))?;
+                res.ok_or("Block not found")?
+                    .map_err(|c| format!("Tried to redirect lookup a second time to {}", c))?
+            }
+        };
+        let block = raw_block.decode().unwrap();
+        Ok(Ok(block))
+}
+
+#[export_name = "canister_query block_dfx"]
+fn block_dfx_() {
+    over_async(candid_one, |height| _get_block_dfx(height))
+}
+
 #[export_name = "canister_query tip_of_chain_pb"]
 fn tip_of_chain_() {
     over(protobuf, |protobuf::TipOfChainRequest {}| tip_of_chain());
+}
+
+#[export_name = "canister_query tip_of_chain_dfx"]
+fn tip_of_chain_dfx_() {
+    over(candid_one, |TipOfChainArgs {}| tip_of_chain());
 }
 
 #[export_name = "canister_query get_archive_index_pb"]
@@ -646,6 +741,11 @@ fn account_balance_dfx_() {
 #[export_name = "canister_query total_supply_pb"]
 fn total_supply_() {
     over(protobuf, |_: TotalSupplyArgs| total_supply())
+}
+
+#[export_name = "canister_query total_supply_dfx"]
+fn total_supply_dfx_() {
+    over(candid_one, |_: TotalSupplyArgs| total_supply())
 }
 
 /// Get multiple blocks by *offset into the container* (not BlockHeight) and
