@@ -668,6 +668,8 @@ pub struct Ledger {
     transactions_by_height: VecDeque<TransactionInfo>,
     /// Used to prevent non-whitelisted canisters from sending tokens
     send_whitelist: HashSet<CanisterId>,
+    /// Used to set send_whitelist
+    admin: PrincipalId,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -689,6 +691,7 @@ impl Default for Ledger {
             transactions_by_hash: BTreeMap::new(),
             transactions_by_height: VecDeque::new(),
             send_whitelist: HashSet::new(),
+            admin: PrincipalId::new_anonymous(),
         }
     }
 }
@@ -820,9 +823,11 @@ impl Ledger {
         timestamp: TimeStamp,
         transaction_window: Option<Duration>,
         send_whitelist: HashSet<CanisterId>,
+        admin: PrincipalId,
     ) {
         self.balances.icpt_pool = ICPTs::MAX;
         self.minting_account_id = Some(minting_account);
+        self.admin = admin;
         if let Some(t) = transaction_window {
             self.transaction_window = t;
         }
@@ -955,8 +960,25 @@ impl Ledger {
         Some((blocks_to_archive, self.blockchain.archive.clone()))
     }
 
+    pub fn set_send_whitelist(&mut self, new_send_whitelist: HashSet<CanisterId>) {
+        self.send_whitelist = new_send_whitelist;
+    }
+
+    pub fn set_admin(&mut self, new_admin: PrincipalId) {
+        self.admin = new_admin;
+    }
+
+    pub fn is_admin(&self, _principal_id: &PrincipalId) -> bool {
+        self.admin == *_principal_id
+    }
+
     pub fn can_send(&self, _principal_id: &PrincipalId) -> bool {
-        return true;
+        _principal_id.is_self_authenticating()
+            || LEDGER
+                .read()
+                .unwrap()
+                .send_whitelist
+                .contains(&CanisterId::new(*_principal_id).unwrap())
     }
 
     pub fn transactions_by_hash_len(&self) -> usize {
@@ -973,6 +995,20 @@ lazy_static! {
     // Maximum inter-canister message size in bytes
     pub static ref MAX_MESSAGE_SIZE_BYTES: RwLock<usize> = RwLock::new(1024 * 1024);
 }
+
+pub fn set_send_whitelist(
+    new_send_whitelist: HashSet<CanisterId>,
+) {
+    LEDGER.write().unwrap().set_send_whitelist(new_send_whitelist)
+}
+
+pub fn set_admin(
+    new_admin: PrincipalId,
+) {
+    LEDGER.write().unwrap().set_admin(new_admin)
+}
+
+
 
 pub fn add_payment(
     memo: Memo,
@@ -999,6 +1035,11 @@ pub fn change_notification_state(
     )
 }
 
+// #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
+// pub struct SetSendWhitelistArgs {
+//     new_send_whitelist: HashSet<CanisterId>,
+// }
+
 // This is how we pass arguments to 'init' in main.rs
 #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
 pub struct LedgerCanisterInitPayload {
@@ -1008,6 +1049,7 @@ pub struct LedgerCanisterInitPayload {
     pub transaction_window: Option<Duration>,
     pub archive_options: Option<ArchiveOptions>,
     pub send_whitelist: HashSet<CanisterId>,
+    pub admin: PrincipalId,
 }
 
 impl LedgerCanisterInitPayload {
@@ -1018,6 +1060,7 @@ impl LedgerCanisterInitPayload {
         max_message_size_bytes: Option<usize>,
         transaction_window: Option<Duration>,
         send_whitelist: HashSet<CanisterId>,
+        admin: PrincipalId,
     ) -> Self {
         // verify ledger's invariant about the maximum amount
         let _can_sum = initial_values.values().fold(ICPTs::ZERO, |acc, x| {
@@ -1034,6 +1077,7 @@ impl LedgerCanisterInitPayload {
             transaction_window,
             archive_options,
             send_whitelist,
+            admin,
         }
     }
 }
