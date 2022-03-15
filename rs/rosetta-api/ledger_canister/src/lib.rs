@@ -204,6 +204,8 @@ pub type Certification = Option<Vec<u8>>;
 
 pub type LedgerBalances = Balances<HashMap<AccountIdentifier, ICPTs>>;
 
+pub type LedgerAllowances = Allowances<HashMap<Principal, HashMap<Principal, Nat>>>;
+
 pub trait BalancesStore {
     fn get_balance(&self, k: &AccountIdentifier) -> Option<&ICPTs>;
     // Update balance for an account using function f.
@@ -212,6 +214,146 @@ pub trait BalancesStore {
     fn update<F>(&mut self, acc: AccountIdentifier, action_on_acc: F)
     where
         F: FnMut(Option<&ICPTs>) -> ICPTs;
+}
+
+#[derive(CandidType, Debug, PartialEq)]
+pub enum TxError {
+    InsufficientBalance,
+    InsufficientAllowance,
+    Unauthorized,
+    LedgerTrap,
+    AmountTooSmall,
+    BlockUsed,
+    ErrorOperationStyle,
+    ErrorTo,
+    Other(String),
+}
+pub type TxReceipt = Result<Nat, TxError>;
+
+#[allow(non_snake_case)]
+#[derive(Deserialize, CandidType, Clone, Debug)]
+struct Metadata {
+    logo: String,
+    name: String,
+    symbol: String,
+    decimals: u8,
+    totalSupply: Nat,
+    owner: Principal,
+    fee: Nat,
+}
+
+#[derive(CandidType, Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum Operation {
+    Approve,
+    Mint,
+    Transfer,
+    TransferFrom,
+    Burn,
+    #[cfg(feature = "alpha-dip20-dank")]
+    CanisterCalled,
+    #[cfg(feature = "alpha-dip20-dank")]
+    CanisterCreated,
+}
+
+impl<'a> TryFrom<&'a str> for Operation {
+    type Error = ();
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "approve" => Self::Approve,
+            "mint" => Self::Mint,
+            "transfer" => Self::Transfer,
+            "transfer_from" => Self::TransferFrom,
+            "burn" => Self::Burn,
+            #[cfg(feature = "alpha-dip20-dank")]
+            "canister_called" => Self::CanisterCalled,
+            #[cfg(feature = "alpha-dip20-dank")]
+            "canister_created" => Self::CanisterCreated,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl Into<&'static str> for Operation {
+    fn into(self) -> &'static str {
+        match self {
+            Self::Approve => "approve",
+            Self::Mint => "mint",
+            Self::Transfer => "transfer",
+            Self::TransferFrom => "transfer_from",
+            Self::Burn => "burn",
+            #[cfg(feature = "alpha-dip20-dank")]
+            Self::CanisterCalled => "canister_called",
+            #[cfg(feature = "alpha-dip20-dank")]
+            Self::CanisterCreated => "canister_created",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TxRecord {
+    pub caller: Option<Principal>,
+    pub index: Nat,
+    pub from: Principal,
+    pub to: Principal,
+    pub amount: Nat,
+    pub fee: Nat,
+    pub timestamp: Int,
+    pub status: TransactionStatus,
+    pub operation: Operation,
+}
+
+#[derive(CandidType, Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum TransactionStatus {
+    Succeeded,
+    Failed,
+}
+
+impl<'a> TryFrom<&'a str> for TransactionStatus {
+    type Error = ();
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "succeeded" => Self::Succeeded,
+            "failed" => Self::Failed,
+            _ => return Err(()),
+        })
+    }
+}
+
+impl Into<&'static str> for TransactionStatus {
+    fn into(self) -> &'static str {
+        match self {
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+        }
+    }
+}
+
+impl TransactionStatus {
+    pub fn into_str(self) -> &'static str {
+        self.into()
+    }
+}
+
+pub trait AllowancesStore {
+    fn get_allowance(&self, k: &Principal) -> Option<&ICPTs>;
+    fn set_allowance(&self, s: &Principal, t: &Principal, amount: &ICPTs) -> Result<(), Err>;
+    fn drop_allowance(&self, s: &Principal) -> Result<(), Err>;
+}
+
+impl AllowancesStore for HashMap<Principal, HashMap<Principal, Nat>> {
+    fn get_allowance(&self, k: &Principal) -> Option<&ICPTs> {
+
+    }
+
+    fn set_allowance(&self, s: &Principal, t: &Principal, amount: &ICPTs) -> Result<(), Err> {
+
+    }
+
+    fn drop_allowance(&self, s: &Principal) -> Result<(), Err> {
+
+    }
 }
 
 impl BalancesStore for HashMap<AccountIdentifier, ICPTs> {
@@ -251,7 +393,19 @@ pub struct Balances<S: BalancesStore> {
     pub icpt_pool: ICPTs,
 }
 
+/// Describes the state of users accounts at the tip of the chain
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct Allowances<S: AllowancesStore> {
+    pub store: S,
+}
+
 impl<S: Default + BalancesStore> Default for Balances<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<S: Default + AllowancesStore> Default for Allowances<S> {
     fn default() -> Self {
         Self::new()
     }
@@ -369,6 +523,10 @@ impl LedgerBalances {
         to_trim.into_vec()
     }
 }
+
+// impl LedgerAllowances {
+//
+// }
 
 /// An operation which modifies account balances
 #[derive(
@@ -648,6 +806,7 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Ledger {
     pub balances: LedgerBalances,
+    pub allowances: LedgerAllowances,
     pub blockchain: Blockchain,
     // A cap on the maximum number of accounts
     maximum_number_of_accounts: usize,
@@ -688,6 +847,7 @@ impl Default for Ledger {
     fn default() -> Self {
         Self {
             balances: LedgerBalances::default(),
+            allowances: LedgerAllowances::default(),
             blockchain: Blockchain::default(),
             maximum_number_of_accounts: 50_000_000,
             accounts_overflow_trim_quantity: 100_000,
@@ -999,12 +1159,16 @@ impl Ledger {
     }
 
     pub fn can_send(&self, _principal_id: &PrincipalId) -> bool {
-        _principal_id.is_self_authenticating()
+        (_principal_id.is_self_authenticating()
             || LEDGER
                 .read()
                 .unwrap()
                 .send_whitelist
-                .contains(&CanisterId::new(*_principal_id).unwrap())
+                .contains(&CanisterId::new(*_principal_id).unwrap()))
+            && LEGER
+            .read()
+            .unwrap()
+            .allowances
     }
 
     pub fn transactions_by_hash_len(&self) -> usize {

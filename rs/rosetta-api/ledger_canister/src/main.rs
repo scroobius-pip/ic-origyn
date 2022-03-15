@@ -451,6 +451,12 @@ fn pre_upgrade() {
         .expect("failed to flush stable memory writer");
 }
 
+#[export_name = "canister_update approve"]
+fn approve(to: PrincipalId, amount: u64) {
+    let caller_principal_id = caller();
+    LEDGER.read().unwrap().allowances.set_allowance(caller_principal_id, to, amount);
+}
+
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
 /// This really should be an action on the ledger canister, but since we don't
 /// want to hold a mutable lock on the whole ledger while we're archiving, we
