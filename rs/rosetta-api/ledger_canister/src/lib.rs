@@ -343,7 +343,7 @@ pub trait AllowancesStore {
 }
 
 impl AllowancesStore for HashMap<Principal, HashMap<Principal, Nat>> {
-    fn get_allowance(&self, k: &Principal) -> Option<&ICPTs> {
+    fn get_allowance(&self, s: &Principal, t: &Principal) -> Option<&ICPTs> {
 
     }
 
@@ -351,7 +351,7 @@ impl AllowancesStore for HashMap<Principal, HashMap<Principal, Nat>> {
 
     }
 
-    fn drop_allowance(&self, s: &Principal) -> Result<(), Err> {
+    fn drop_allowance(&self, s: &Principal, t: &Principal) -> Result<(), Err> {
 
     }
 }

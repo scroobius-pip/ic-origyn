@@ -451,10 +451,49 @@ fn pre_upgrade() {
         .expect("failed to flush stable memory writer");
 }
 
+/// DIP20 update methods
 #[export_name = "canister_update approve"]
 fn approve(to: PrincipalId, amount: u64) {
     let caller_principal_id = caller();
     LEDGER.read().unwrap().allowances.set_allowance(caller_principal_id, to, amount);
+}
+
+#[export_name = "canister_update transfer"]
+async fn transfer(to: Principal, value: Nat) -> TxReceipt {}
+
+#[export_name = "canister_update transferFrom"]
+async fn transfer_from(from: Principal, to: Principal, value: Nat) -> TxReceipt {}
+
+/// DIP20 query methods
+#[export_name = "canister_query logo"]
+fn get_logo() -> String {}
+
+#[export_name = "canister_query name"]
+fn name() -> String {}
+
+#[export_name = "canister_query symbol"]
+fn symbol() -> String {}
+
+#[export_name = "canister_query decimals"]
+fn decimals() -> u8 {}
+
+#[export_name = "canister_query totalSupply"]
+fn _total_supply() -> Nat {
+    total_supply()
+}
+
+#[export_name = "canister_query owner"]
+fn owner() -> Principal {}
+
+#[export_name = "canister_query getMetadata"]
+fn get_metadata() -> Metadata {}
+
+#[export_name = "canister_query balanceOf"]
+fn balance_of(id: Principal) -> Nat {}
+
+#[export_name = "canister_query allowance"]
+fn allowance(owner: Principal, spender: Principal) -> Nat {
+    LEDGER.read().unwrap().allowances.get_allowance(owner, spender)
 }
 
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
