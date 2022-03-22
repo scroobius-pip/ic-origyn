@@ -455,45 +455,66 @@ fn pre_upgrade() {
 #[export_name = "canister_update approve"]
 fn approve(to: PrincipalId, amount: u64) {
     let caller_principal_id = caller();
-    LEDGER.read().unwrap().allowances.set_allowance(caller_principal_id, to, amount);
+    LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
 }
 
 #[export_name = "canister_update transfer"]
-async fn transfer(to: Principal, value: Nat) -> TxReceipt {}
+async fn transfer(to: PrincipalId, value: u64) -> TxReceipt {
+    Ok(0u64)
+}
 
 #[export_name = "canister_update transferFrom"]
-async fn transfer_from(from: Principal, to: Principal, value: Nat) -> TxReceipt {}
+async fn transfer_from(from: PrincipalId, to: PrincipalId, value: u64) -> TxReceipt {
+    Ok(0u64)
+}
 
 /// DIP20 query methods
 #[export_name = "canister_query logo"]
-fn get_logo() -> String {}
+fn get_logo() -> String {
+    String::from("Logo")
+}
 
 #[export_name = "canister_query name"]
-fn name() -> String {}
+fn name() -> String {
+    String::from("OrigynToken")
+}
 
 #[export_name = "canister_query symbol"]
-fn symbol() -> String {}
+fn symbol() -> String {
+    String::from("OGY")
+}
 
 #[export_name = "canister_query decimals"]
-fn decimals() -> u8 {}
+fn decimals() -> u8 {
+    0u8
+}
 
 #[export_name = "canister_query totalSupply"]
-fn _total_supply() -> Nat {
-    total_supply()
+fn _total_supply() -> u64 {
+    total_supply().get_e8s()
 }
 
 #[export_name = "canister_query owner"]
-fn owner() -> Principal {}
+fn owner() -> String {
+    String::from("co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe")
+}
 
 #[export_name = "canister_query getMetadata"]
-fn get_metadata() -> Metadata {}
+fn get_metadata() -> ledger_canister::Metadata {
+    ledger_canister::Metadata::default()
+}
 
 #[export_name = "canister_query balanceOf"]
-fn balance_of(id: Principal) -> Nat {}
+fn balance_of(id: PrincipalId) -> u64 {
+    0
+}
 
 #[export_name = "canister_query allowance"]
-fn allowance(owner: Principal, spender: Principal) -> Nat {
-    LEDGER.read().unwrap().allowances.get_allowance(owner, spender)
+fn allowance(owner: PrincipalId, spender: PrincipalId) -> u64 {
+    match LEDGER.read().unwrap().allowances.store.get_allowance(&owner, &spender) {
+        Ok(amount) => { amount }
+        _ => { 0 }
+    }
 }
 
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.

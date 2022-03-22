@@ -204,7 +204,7 @@ pub type Certification = Option<Vec<u8>>;
 
 pub type LedgerBalances = Balances<HashMap<AccountIdentifier, ICPTs>>;
 
-pub type LedgerAllowances = Allowances<HashMap<Principal, HashMap<Principal, Nat>>>;
+pub type LedgerAllowances = Allowances<HashMap<PrincipalId, HashMap<PrincipalId, u64>>>;
 
 pub trait BalancesStore {
     fn get_balance(&self, k: &AccountIdentifier) -> Option<&ICPTs>;
@@ -228,18 +228,32 @@ pub enum TxError {
     ErrorTo,
     Other(String),
 }
-pub type TxReceipt = Result<Nat, TxError>;
+pub type TxReceipt = Result<u64, TxError>;
 
 #[allow(non_snake_case)]
 #[derive(Deserialize, CandidType, Clone, Debug)]
-struct Metadata {
+pub struct Metadata {
     logo: String,
     name: String,
     symbol: String,
     decimals: u8,
-    totalSupply: Nat,
-    owner: Principal,
-    fee: Nat,
+    totalSupply: u64,
+    owner: String,
+    fee: u64,
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self {
+            logo: "logo".to_string(),
+            name: "OrigynToken".to_string(),
+            symbol: "OGY".to_string(),
+            decimals: 0u8,
+            totalSupply: LEDGER.read().unwrap().balances.total_supply().get_e8s(),
+            owner: "".to_string(),
+            fee: 0,
+        }
+    }
 }
 
 #[derive(CandidType, Debug, Clone, Copy, Serialize, Deserialize)]
@@ -292,13 +306,13 @@ impl Into<&'static str> for Operation {
 
 #[derive(Debug, Clone)]
 pub struct TxRecord {
-    pub caller: Option<Principal>,
-    pub index: Nat,
-    pub from: Principal,
-    pub to: Principal,
-    pub amount: Nat,
-    pub fee: Nat,
-    pub timestamp: Int,
+    pub caller: Option<PrincipalId>,
+    pub index: u64,
+    pub from: PrincipalId,
+    pub to: PrincipalId,
+    pub amount: u64,
+    pub fee: u64,
+    pub timestamp: u32,
     pub status: TransactionStatus,
     pub operation: Operation,
 }
@@ -337,22 +351,22 @@ impl TransactionStatus {
 }
 
 pub trait AllowancesStore {
-    fn get_allowance(&self, k: &Principal) -> Option<&ICPTs>;
-    fn set_allowance(&self, s: &Principal, t: &Principal, amount: &ICPTs) -> Result<(), Err>;
-    fn drop_allowance(&self, s: &Principal) -> Result<(), Err>;
+    fn get_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt;
+    fn set_allowance(&self, s: &PrincipalId, t: &PrincipalId, amount: u64) -> TxReceipt;
+    fn drop_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt;
 }
 
-impl AllowancesStore for HashMap<Principal, HashMap<Principal, Nat>> {
-    fn get_allowance(&self, s: &Principal, t: &Principal) -> Option<&ICPTs> {
-
+impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, u64>> {
+    fn get_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt {
+        Err(TxError::InsufficientAllowance)
     }
 
-    fn set_allowance(&self, s: &Principal, t: &Principal, amount: &ICPTs) -> Result<(), Err> {
-
+    fn set_allowance(&self, s: &PrincipalId, t: &PrincipalId, amount: u64) -> TxReceipt {
+        Err(TxError::Other(String::from("Not implemented")))
     }
 
-    fn drop_allowance(&self, s: &Principal, t: &Principal) -> Result<(), Err> {
-
+    fn drop_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt {
+        Err(TxError::InsufficientAllowance)
     }
 }
 
@@ -493,6 +507,15 @@ impl<S: Default + BalancesStore> Balances<S> {
             )
         })
     }
+}
+
+impl<S: Default + AllowancesStore> Allowances<S> {
+    pub fn new() -> Self {
+        Self {
+            store: S::default(),
+        }
+    }
+
 }
 
 impl LedgerBalances {
@@ -1159,16 +1182,12 @@ impl Ledger {
     }
 
     pub fn can_send(&self, _principal_id: &PrincipalId) -> bool {
-        (_principal_id.is_self_authenticating()
+        _principal_id.is_self_authenticating()
             || LEDGER
                 .read()
                 .unwrap()
                 .send_whitelist
-                .contains(&CanisterId::new(*_principal_id).unwrap()))
-            && LEGER
-            .read()
-            .unwrap()
-            .allowances
+                .contains(&CanisterId::new(*_principal_id).unwrap())
     }
 
     pub fn transactions_by_hash_len(&self) -> usize {
