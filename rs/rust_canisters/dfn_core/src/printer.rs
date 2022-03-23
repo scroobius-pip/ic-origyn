@@ -109,7 +109,7 @@ impl io::Write for Printer {
 // nightly_compiler is enabled by build.rs when the compiler is a nightly
 #[cfg(nightly_compiler)]
 fn set_print(printer: Box<Printer>) {
-    io::set_print(Some(Box::new(printer)));
+//     io::set_print(Some(Box::new(printer)));
 }
 
 #[allow(clippy::boxed_local)]
