@@ -451,6 +451,72 @@ fn pre_upgrade() {
         .expect("failed to flush stable memory writer");
 }
 
+/// DIP20 update methods
+#[export_name = "canister_update approve"]
+fn approve(to: PrincipalId, amount: u64) {
+    let caller_principal_id = caller();
+    LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+}
+
+#[export_name = "canister_update transfer"]
+async fn transfer(to: PrincipalId, value: u64) -> TxReceipt {
+    Ok(0u64)
+}
+
+#[export_name = "canister_update transferFrom"]
+async fn transfer_from(from: PrincipalId, to: PrincipalId, value: u64) -> TxReceipt {
+    Ok(0u64)
+}
+
+/// DIP20 query methods
+#[export_name = "canister_query logo"]
+fn get_logo() -> String {
+    String::from("Logo")
+}
+
+#[export_name = "canister_query name"]
+fn name() -> String {
+    String::from("OrigynToken")
+}
+
+#[export_name = "canister_query symbol"]
+fn symbol() -> String {
+    String::from("OGY")
+}
+
+#[export_name = "canister_query decimals"]
+fn decimals() -> u8 {
+    0u8
+}
+
+#[export_name = "canister_query totalSupply"]
+fn _total_supply() -> u64 {
+    total_supply().get_e8s()
+}
+
+#[export_name = "canister_query owner"]
+fn owner() -> String {
+    String::from("co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe")
+}
+
+#[export_name = "canister_query getMetadata"]
+fn get_metadata() -> ledger_canister::Metadata {
+    ledger_canister::Metadata::default()
+}
+
+#[export_name = "canister_query balanceOf"]
+fn balance_of(id: PrincipalId) -> u64 {
+    0
+}
+
+#[export_name = "canister_query allowance"]
+fn allowance(owner: PrincipalId, spender: PrincipalId) -> u64 {
+    match LEDGER.read().unwrap().allowances.store.get_allowance(&owner, &spender) {
+        Ok(amount) => { amount }
+        _ => { 0 }
+    }
+}
+
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
 /// This really should be an action on the ledger canister, but since we don't
 /// want to hold a mutable lock on the whole ledger while we're archiving, we
