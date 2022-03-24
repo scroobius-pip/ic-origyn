@@ -204,7 +204,7 @@ pub type Certification = Option<Vec<u8>>;
 
 pub type LedgerBalances = Balances<HashMap<AccountIdentifier, ICPTs>>;
 
-pub type LedgerAllowances = Allowances<HashMap<PrincipalId, HashMap<PrincipalId, u64>>>;
+pub type LedgerAllowances = Allowances<HashMap<PrincipalId, HashMap<PrincipalId, (u64, u64)>>>;
 
 pub trait BalancesStore {
     fn get_balance(&self, k: &AccountIdentifier) -> Option<&ICPTs>;
@@ -304,6 +304,12 @@ impl Into<&'static str> for Operation {
     }
 }
 
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct DIP20TransferArgs {
+    pub to: PrincipalId,
+    pub amount: u64,
+}
+
 #[derive(Debug, Clone)]
 pub struct TxRecord {
     pub caller: Option<PrincipalId>,
@@ -356,7 +362,7 @@ pub trait AllowancesStore {
     fn drop_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt;
 }
 
-impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, u64>> {
+impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, (u64, u64)>> {
     fn get_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt {
         Err(TxError::InsufficientAllowance)
     }

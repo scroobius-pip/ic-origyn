@@ -459,12 +459,37 @@ fn approve(to: PrincipalId, amount: u64) {
 }
 
 #[export_name = "canister_update transfer"]
-async fn transfer(to: PrincipalId, value: u64) -> TxReceipt {
+async fn transfer() -> TxReceipt {
+    over_async(
+        candid_one,
+        |DIP20TransferArgs {
+             amount,
+             to,
+         }| {
+            send(
+                Memo(0),
+                ICPTs::from_e8s(amount),
+                TRANSACTION_FEE,
+                None,
+                AccountIdentifier::new(to, None),
+                None,
+            )
+        },
+    );
     Ok(0u64)
 }
 
 #[export_name = "canister_update transferFrom"]
-async fn transfer_from(from: PrincipalId, to: PrincipalId, value: u64) -> TxReceipt {
+async fn transfer_from(from: PrincipalId, to: PrincipalId, amount: u64) -> TxReceipt {
+    // over_async(
+    //     candid_one,
+    //     |DIP20TransferArgs {
+    //          amount,
+    //          to,
+    //      }| {
+    //         send(Memo(0), amount, TRANSACTION_FEE, None, to, None)
+    //     },
+    // );
     Ok(0u64)
 }
 
