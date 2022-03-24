@@ -1,6 +1,8 @@
 name: IC - Build n Deploy
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - feat/send-whitelist-account-id-minting-account-sets
 
 jobs:
   deploy:
