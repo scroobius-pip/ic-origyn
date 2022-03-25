@@ -4,7 +4,7 @@
     "ledger": {
       "type": "custom",
       "candid": "ledger.did",
-      "wasm": "../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wasm",
+      "wasm": "../target/wasm32-unknown-unknown/release/ledger-canister-min.wasm",
       "build": "./ledger_canister/build_archive_node.sh"
     }
   },

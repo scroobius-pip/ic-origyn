@@ -7,12 +7,12 @@ set -euo pipefail
 # output
 
 echo "Compiling Rust to Wasm"
-cargo build --target wasm32-unknown-unknown --release --bin ledger-archive-node-canister
+cargo build --target wasm32-unknown-unknown --release --bin ledger-canister -p ledger-canister
 
 echo "Converting Wasm to Wat"
-wasm2wat ../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wasm -o ../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wat
+wasm2wat ../target/wasm32-unknown-unknown/release/ledger-canister.wasm -o ../target/wasm32-unknown-unknown/release/ledger-canister.wat
 echo "Converting Wat to Wasm"
-wat2wasm ../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wat -o ../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wasm
+wat2wasm ../target/wasm32-unknown-unknown/release/ledger-canister.wat -o ../target/wasm32-unknown-unknown/release/ledger-canister-min.wasm
 echo "Removing Wat file"
-rm ../target/wasm32-unknown-unknown/release/ledger-archive-node-canister.wat
+rm ../target/wasm32-unknown-unknown/release/ledger-canister.wat
 echo "Done!"
