@@ -6,11 +6,11 @@ dfx identity new ic_admin
 
 MINT_ACC=$(dfx ledger account-id)
 
-#mkdir ~/.config/dfx/identity/admin/
+mkdir ~/.config/dfx/identity/admin/
 
-echo ${DFX_IDENTITY} > identity.pem
+echo ${DFX_IDENTITY} > ~/.config/dfx/identity/admin/identity.pem
 
-dfx identity import admin identity.pem
+sed -i 's/\\r\\n/\r\n/g' ~/.config/dfx/identity/admin/identity.pem
 
 dfx identity use admin
 
