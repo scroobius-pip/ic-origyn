@@ -29,6 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           ./scripts/dfx-install-script.sh
+          sudo apt update && sudo apt install wabt
         working-directory: rs/rosetta-api/ledger_canister
 
       - name: deploy to cluster
