@@ -12,6 +12,8 @@ echo ${DFX_IDENTITY} > identity.pem
 
 dfx identity import admin identity.pem
 
+dfx identity use admin
+
 LEDGER_ACC=$(dfx ledger account-id)
 
 dfx identity whoami
