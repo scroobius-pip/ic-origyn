@@ -44,6 +44,8 @@ pub use account_identifier::{AccountIdentifier, Subaccount};
 pub use icpts::{ICPTs, DECIMAL_PLACES, ICP_SUBDIVIDABLE_BY, MIN_BURN_AMOUNT, TRANSACTION_FEE};
 pub use protobuf::TimeStamp;
 
+use std::time::{SystemTime};
+
 // Helper to print messages in magenta
 pub fn print<S: std::convert::AsRef<str>>(s: S)
 where
@@ -204,7 +206,7 @@ pub type Certification = Option<Vec<u8>>;
 
 pub type LedgerBalances = Balances<HashMap<AccountIdentifier, ICPTs>>;
 
-pub type LedgerAllowances = Allowances<HashMap<PrincipalId, HashMap<PrincipalId, (u64, u64)>>>;
+pub type LedgerAllowances = Allowances<HashMap<PrincipalId, HashMap<PrincipalId, (u64, SystemTime)>>>;
 
 pub trait BalancesStore {
     fn get_balance(&self, k: &AccountIdentifier) -> Option<&ICPTs>;
@@ -251,7 +253,7 @@ impl Default for Metadata {
             decimals: 0u8,
             totalSupply: LEDGER.read().unwrap().balances.total_supply().get_e8s(),
             owner: "".to_string(),
-            fee: 0,
+            fee: TRANSACTION_FEE,
         }
     }
 }
@@ -363,16 +365,52 @@ pub trait AllowancesStore {
 }
 
 impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, (u64, u64)>> {
-    fn get_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt {
-        Err(TxError::InsufficientAllowance)
+    fn get_allowance(&self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt {
+        match &self.get(owner) {
+            Some(allowances) => {
+                match allowances.get(spender) {
+                    Some(allowance) => { Ok(allowance) }
+                    None => { return Err(TxError::InsufficientAllowance); }
+                }
+            }
+            None => { return Err(TxError::InsufficientAllowance); }
+        }
+
+        return Err(TxError::InsufficientAllowance);
     }
 
-    fn set_allowance(&self, s: &PrincipalId, t: &PrincipalId, amount: u64) -> TxReceipt {
-        Err(TxError::Other(String::from("Not implemented")))
+    fn set_allowance(&self, owner: &PrincipalId, spender: &PrincipalId, amount: u64) -> TxReceipt {
+        match &self.get(owner) {
+            Some(allowances) => {
+                match allowances.get(spender) {
+                    Some(allowance) => {
+                        allowances.remove(t);
+                        match allowaances.insert(spender, (amount, SystemTime::now())) {
+                            Some(result) => { result }
+                            None => { return Err(TxError::Other(String::from("Impossible to create Allowance."))); }
+                        }
+                    }
+                    None => { allowaances.insert(spender, amount) }
+                }
+            }
+            None => { return Err(TxError::InsufficientAllowance); }
+        }
+
+        return Err(TxError::InsufficientAllowance);
     }
 
-    fn drop_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt {
-        Err(TxError::InsufficientAllowance)
+    fn drop_allowance(&self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt {
+        match &self.get(owner) {
+            Some(allowances) => {
+                match &allowances.get(spender) {
+                    Some(allowance) => { allowances.remove(spender); 0u64 }
+                    None => { return Err(TxError::InsufficientAllowance); }
+                }
+            }
+            None => { return Err(TxError::InsufficientAllowance); }
+        }
+
+        return Err(TxError::InsufficientAllowance);
     }
 }
 

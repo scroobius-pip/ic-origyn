@@ -466,30 +466,39 @@ async fn transfer() -> TxReceipt {
              amount,
              to,
          }| {
-            send(
+            let bh = send(
                 Memo(0),
                 ICPTs::from_e8s(amount),
                 TRANSACTION_FEE,
                 None,
                 AccountIdentifier::new(to, None),
                 None,
-            )
+            ).await;
+            Ok(bh)
         },
     );
-    Ok(0u64)
 }
 
 #[export_name = "canister_update transferFrom"]
 async fn transfer_from(from: PrincipalId, to: PrincipalId, amount: u64) -> TxReceipt {
-    // over_async(
-    //     candid_one,
-    //     |DIP20TransferArgs {
-    //          amount,
-    //          to,
-    //      }| {
-    //         send(Memo(0), amount, TRANSACTION_FEE, None, to, None)
-    //     },
-    // );
+    let caller = ic::caller();
+
+    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&from, &caller);
+    match allowance_result {
+        Ok(allowance) => {
+            if allowance < amount.clone() + TRANSACTION_FEE {
+                return Err(TxError::InsufficientAllowance);
+            }
+            let from_balance = LEDGER.read().unwrap().balances.account_balance(AccountIdentifier::new(&from, None));
+            if from_balance < value.clone() + fee.clone() {
+                return Err(TxError::InsufficientBalance);
+            }
+            send(Memo(0), amount, TRANSACTION_FEE, AccountIdentifier::new(&from, None), to, None).await;
+            LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &caller);
+        }
+        _ => {Ok(0u64)}
+    }
+
     Ok(0u64)
 }
 
@@ -531,7 +540,7 @@ fn get_metadata() -> ledger_canister::Metadata {
 
 #[export_name = "canister_query balanceOf"]
 fn balance_of(id: PrincipalId) -> u64 {
-    0
+    LEDGER.read().unwrap().balances.account_balance(AccountIdentifier::new(&id, None))
 }
 
 #[export_name = "canister_query allowance"]
