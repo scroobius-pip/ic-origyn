@@ -1982,6 +1982,13 @@ pub struct NotifyCanisterArgs {
     pub to_subaccount: Option<Subaccount>,
 }
 
+/// Argument taken by the notification endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct ApproveAllowanceArgs {
+    pub to: PrincipalId,
+    pub amount: u64,
+}
+
 /// Argument taken by tip_of_chain_dfx endpoint
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct TipOfChainArgs {}

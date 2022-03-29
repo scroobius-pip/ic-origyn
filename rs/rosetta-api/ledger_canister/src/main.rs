@@ -453,9 +453,14 @@ fn pre_upgrade() {
 
 /// DIP20 update methods
 #[export_name = "canister_update approve"]
-fn approve(to: PrincipalId, amount: u64) {
-    let caller_principal_id = caller();
-    // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+fn approve() {
+    over(candid_one, |ApproveAllowanceArgs{
+            to,
+            amount,
+        }| {
+            let caller_principal_id = caller();
+            // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+    });
 }
 
 #[export_name = "canister_update transfer"]
