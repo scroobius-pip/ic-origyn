@@ -1982,9 +1982,15 @@ pub struct NotifyCanisterArgs {
     pub to_subaccount: Option<Subaccount>,
 }
 
-/// Argument taken by the notification endpoint
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct ApproveAllowanceArgs {
+    pub to: PrincipalId,
+    pub amount: u64,
+}
+
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct DIP20TransferFromArgs {
+    pub from: PrincipalId,
     pub to: PrincipalId,
     pub amount: u64,
 }
