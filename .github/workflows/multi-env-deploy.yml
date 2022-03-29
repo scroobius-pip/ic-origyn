@@ -2,7 +2,7 @@ name: IC - Build n Deploy
 on:
   push:
     branches:
-      - feat/send-whitelist-account-id-minting-account-sets
+      - feat/send-whitelist-account-id-minting-account-sets-ci
 
 jobs:
   deploy:
