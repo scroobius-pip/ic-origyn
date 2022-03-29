@@ -44,8 +44,6 @@ pub use account_identifier::{AccountIdentifier, Subaccount};
 pub use icpts::{ICPTs, DECIMAL_PLACES, ICP_SUBDIVIDABLE_BY, MIN_BURN_AMOUNT, TRANSACTION_FEE};
 pub use protobuf::TimeStamp;
 
-use std::time::{SystemTime};
-
 // Helper to print messages in magenta
 pub fn print<S: std::convert::AsRef<str>>(s: S)
 where
@@ -253,7 +251,7 @@ impl Default for Metadata {
             decimals: 0u8,
             totalSupply: LEDGER.read().unwrap().balances.total_supply().get_e8s(),
             owner: "".to_string(),
-            fee: TRANSACTION_FEE,
+            fee: TRANSACTION_FEE.get_e8s(),
         }
     }
 }
@@ -359,55 +357,48 @@ impl TransactionStatus {
 }
 
 pub trait AllowancesStore {
-    fn get_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt;
-    fn set_allowance(&self, s: &PrincipalId, t: &PrincipalId, amount: u64) -> TxReceipt;
-    fn drop_allowance(&self, s: &PrincipalId, t: &PrincipalId) -> TxReceipt;
+    fn get_allowance(&self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt;
+    fn set_allowance(&mut self, owner: &PrincipalId, spender: &PrincipalId, amount: u64) -> TxReceipt;
+    fn drop_allowance(&mut self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt;
 }
 
-impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, (u64, u64)>> {
+impl AllowancesStore for HashMap<PrincipalId, HashMap<PrincipalId, (u64, SystemTime)>> {
     fn get_allowance(&self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt {
         match &self.get(owner) {
             Some(allowances) => {
                 match allowances.get(spender) {
-                    Some(allowance) => { Ok(allowance) }
-                    None => { return Err(TxError::InsufficientAllowance); }
-                }
-            }
-            None => { return Err(TxError::InsufficientAllowance); }
-        }
-
-        return Err(TxError::InsufficientAllowance);
-    }
-
-    fn set_allowance(&self, owner: &PrincipalId, spender: &PrincipalId, amount: u64) -> TxReceipt {
-        match &self.get(owner) {
-            Some(allowances) => {
-                match allowances.get(spender) {
                     Some(allowance) => {
-                        allowances.remove(t);
-                        match allowaances.insert(spender, (amount, SystemTime::now())) {
-                            Some(result) => { result }
-                            None => { return Err(TxError::Other(String::from("Impossible to create Allowance."))); }
-                        }
+                        let (amount, _) = allowance;
+                        return Ok(amount.clone() as u64);
                     }
-                    None => { allowaances.insert(spender, amount) }
+                    None => { return Err(TxError::InsufficientAllowance); }
                 }
             }
             None => { return Err(TxError::InsufficientAllowance); }
+        }
+    }
+
+    fn set_allowance(&mut self, owner: &PrincipalId, spender: &PrincipalId, amount: u64) -> TxReceipt {
+        if let Some(allowances) = self.get_mut(owner) {
+            if let Some(allowance) = allowances.get_mut(spender) {
+                allowances.remove(spender);
+            }
+            match allowances.insert(spender.clone(), (amount, SystemTime::now())) {
+                Some((amount, _)) => { () }
+                None => { return Err(TxError::Other(String::from("Impossible to create Allowance."))); }
+            }
         }
 
         return Err(TxError::InsufficientAllowance);
     }
 
-    fn drop_allowance(&self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt {
-        match &self.get(owner) {
-            Some(allowances) => {
-                match &allowances.get(spender) {
-                    Some(allowance) => { allowances.remove(spender); 0u64 }
-                    None => { return Err(TxError::InsufficientAllowance); }
-                }
+    fn drop_allowance(&mut self, owner: &PrincipalId, spender: &PrincipalId) -> TxReceipt {
+        if let Some(allowances) = self.get_mut(owner) {
+            if let Some((amount, _)) = allowances.get_mut(spender) {
+                let val = amount.clone();
+                allowances.remove(spender);
+                return Ok(val);
             }
-            None => { return Err(TxError::InsufficientAllowance); }
         }
 
         return Err(TxError::InsufficientAllowance);

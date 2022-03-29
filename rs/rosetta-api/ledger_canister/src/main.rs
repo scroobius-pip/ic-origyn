@@ -455,7 +455,7 @@ fn pre_upgrade() {
 #[export_name = "canister_update approve"]
 fn approve(to: PrincipalId, amount: u64) {
     let caller_principal_id = caller();
-    LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+    // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
 }
 
 #[export_name = "canister_update transfer"]
@@ -473,33 +473,39 @@ async fn transfer() -> TxReceipt {
                 None,
                 AccountIdentifier::new(to, None),
                 None,
-            ).await;
-            Ok(bh)
+            );
+            bh
         },
     );
+    Ok(0u64)
 }
 
 #[export_name = "canister_update transferFrom"]
 async fn transfer_from(from: PrincipalId, to: PrincipalId, amount: u64) -> TxReceipt {
-    let caller = ic::caller();
+    let transfer_caller = caller();
 
-    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&from, &caller);
+    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&from, &transfer_caller);
     match allowance_result {
-        Ok(allowance) => {
-            if allowance < amount.clone() + TRANSACTION_FEE {
+        Ok(allowance_amount) => {
+            if allowance_amount < amount.clone() + TRANSACTION_FEE.get_e8s() {
                 return Err(TxError::InsufficientAllowance);
             }
-            let from_balance = LEDGER.read().unwrap().balances.account_balance(AccountIdentifier::new(&from, None));
-            if from_balance < value.clone() + fee.clone() {
+            let from_balance = LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(from.clone(), None));
+            if from_balance.get_e8s() < amount.clone() + TRANSACTION_FEE.get_e8s() {
                 return Err(TxError::InsufficientBalance);
             }
-            send(Memo(0), amount, TRANSACTION_FEE, AccountIdentifier::new(&from, None), to, None).await;
-            LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &caller);
+            send(
+                Memo(0),
+                ICPTs::from_e8s(amount.clone()),
+                TRANSACTION_FEE,
+                Some(Subaccount::from(&from)),
+                AccountIdentifier::new(to.clone(), None),
+                None).await;
+            // LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &transfer_caller);
+            Ok(amount)
         }
-        _ => {Ok(0u64)}
+        _ => {return Ok(0u64)}
     }
-
-    Ok(0u64)
 }
 
 /// DIP20 query methods
@@ -540,7 +546,7 @@ fn get_metadata() -> ledger_canister::Metadata {
 
 #[export_name = "canister_query balanceOf"]
 fn balance_of(id: PrincipalId) -> u64 {
-    LEDGER.read().unwrap().balances.account_balance(AccountIdentifier::new(&id, None))
+    LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(id, None)).get_e8s()
 }
 
 #[export_name = "canister_query allowance"]
