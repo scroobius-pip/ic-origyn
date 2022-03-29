@@ -455,7 +455,7 @@ fn pre_upgrade() {
 #[export_name = "canister_update approve"]
 fn approve(to: PrincipalId, amount: u64) {
     let caller_principal_id = caller();
-    LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+    // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
 }
 
 #[export_name = "canister_update transfer"]
