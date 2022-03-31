@@ -631,6 +631,8 @@ fn validate_import_section(module: &Module) -> Result<(), WasmValidationError> {
                         Some(signatures) => {
                             match signatures.get(import_module) {
                                 Some(signature) => {
+                                    println!(format!("ENTRY TO VALIDATE: {}", &entry));
+                                    println!(format!("FUNCTION TYPES TO VALIDATE: {}", &module.type_section().unwrap().types()));
                                     validate_function_signature(
                                         signature,
                                         field,
