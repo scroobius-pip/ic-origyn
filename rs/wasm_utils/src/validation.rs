@@ -722,6 +722,8 @@ fn validate_export_section(module: &Module) -> Result<(), WasmValidationError> {
                         *fn_index as usize - module.import_count(ImportCountType::Function);
                     let type_index =
                         module.function_section().unwrap().entries()[actual_fn_index].type_ref();
+                    println!(format!("FUNCTION FIELD TO VALIDATE: {}", export));
+                    println!(format!("FUNCTION TYPES TO VALIDATE: {}", &module.type_section().unwrap().types()));
                     validate_function_signature(
                         valid_signature,
                         export.field(),
