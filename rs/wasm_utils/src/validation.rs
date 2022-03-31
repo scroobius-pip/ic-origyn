@@ -9,6 +9,7 @@ use parity_wasm::elements::{
     Internal, Module, Section, Type, ValueType,
 };
 use std::collections::{HashMap, HashSet};
+use dfn_core::{println};
 
 /// Symbols that are reserved and cannot be exported by canisters.
 #[doc(hidden)] // pub for usage in tests
@@ -597,19 +598,21 @@ fn validate_function_signature(
     let Type::Function(function_type) = function_type;
     if function_type.params() != expected_signature.param_types.as_slice() {
         return Err(WasmValidationError::InvalidFunctionSignature(format!(
-            "Expected input params {:?} for '{}', got {:?}.",
+            "Expected input params {:?} for '{}', got {:?}. FunctionType {:?}",
             expected_signature.param_types,
             field,
-            function_type.params()
+            function_type.params(),
+            function_type
         )));
     }
 
     if function_type.return_type() != expected_signature.return_type {
         return Err(WasmValidationError::InvalidFunctionSignature(format!(
-            "Expected return type {:?} for '{}', got {:?}.",
+            "Expected return type {:?} for '{}', got {:?}. FunctionType {:?}",
             expected_signature.return_type,
             field,
-            function_type.return_type()
+            function_type.return_type(),
+            function_type
         )));
     }
     Ok(())
