@@ -479,7 +479,7 @@ async fn transfer() {
                 AccountIdentifier::new(to, None),
                 None,
             );
-            // bh
+            bh
         },
     );
     // Ok(0u64)
@@ -515,7 +515,7 @@ async fn transfer_from() {
                         Some(Subaccount::from(&from)),
                         AccountIdentifier::new(to.clone(), None),
                         None);
-                    // bh
+                    bh
                     // LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &transfer_caller);
                     // Ok(amount)
                 }
