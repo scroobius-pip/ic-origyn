@@ -482,7 +482,7 @@ async fn transfer() -> TxReceipt {
             bh
         },
     );
-    Ok(0u64)
+    // Ok(0u64)
 }
 
 #[export_name = "canister_update transferFrom"]
