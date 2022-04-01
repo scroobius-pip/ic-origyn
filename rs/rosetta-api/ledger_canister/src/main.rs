@@ -464,7 +464,7 @@ fn approve() {
 }
 
 #[export_name = "canister_update transfer"]
-async fn transfer() -> TxReceipt {
+async fn transfer() {
     over_async(
         candid_one,
         |DIP20TransferArgs {
@@ -486,7 +486,7 @@ async fn transfer() -> TxReceipt {
 }
 
 #[export_name = "canister_update transferFrom"]
-async fn transfer_from() -> TxReceipt {
+async fn transfer_from() {
     over_async(
         candid_one,
         |DIP20TransferFromArgs {
@@ -523,7 +523,7 @@ async fn transfer_from() -> TxReceipt {
             }
         },
     );
-    Ok(0u64)
+    // Ok(0u64)
 }
 
 /// DIP20 query methods
