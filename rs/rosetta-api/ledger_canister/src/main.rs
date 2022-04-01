@@ -529,17 +529,17 @@ async fn transfer_from() -> TxReceipt {
 /// DIP20 query methods
 #[export_name = "canister_query logo"]
 fn get_logo() {
-    String::from("Logo")
+    String::from("Logo");
 }
 
 #[export_name = "canister_query name"]
 fn name() {
-    String::from("OrigynToken")
+    String::from("OrigynToken");
 }
 
 #[export_name = "canister_query symbol"]
 fn symbol() {
-    String::from("OGY")
+    String::from("OGY");
 }
 
 #[export_name = "canister_query decimals"]
