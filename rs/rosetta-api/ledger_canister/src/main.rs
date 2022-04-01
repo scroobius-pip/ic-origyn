@@ -465,23 +465,23 @@ fn approve() {
 
 #[export_name = "canister_update transfer"]
 async fn transfer() {
-    over_async(
-        candid_one,
-        |DIP20TransferArgs {
-             amount,
-             to,
-         }| {
-            let bh = send(
-                Memo(0),
-                ICPTs::from_e8s(amount),
-                TRANSACTION_FEE,
-                None,
-                AccountIdentifier::new(to, None),
-                None,
-            );
-            bh
-        },
-    );
+    // over_async(
+    //     candid_one,
+    //     |DIP20TransferArgs {
+    //          amount,
+    //          to,
+    //      }| {
+    //         let bh = send(
+    //             Memo(0),
+    //             ICPTs::from_e8s(amount),
+    //             TRANSACTION_FEE,
+    //             None,
+    //             AccountIdentifier::new(to, None),
+    //             None,
+    //         );
+    //         bh
+    //     },
+    // );
     // Ok(0u64)
 }
 
