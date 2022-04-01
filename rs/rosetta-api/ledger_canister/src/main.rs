@@ -543,17 +543,17 @@ fn symbol() {
 }
 
 #[export_name = "canister_query decimals"]
-fn decimals() -> u8 {
+fn decimals() {
     0u8
 }
 
 #[export_name = "canister_query totalSupply"]
-fn _total_supply() -> u64 {
+fn _total_supply() {
     total_supply().get_e8s()
 }
 
 #[export_name = "canister_query owner"]
-fn owner() -> String {
+fn owner() {
     String::from("co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe")
 }
 
