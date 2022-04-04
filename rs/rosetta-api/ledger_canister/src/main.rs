@@ -478,7 +478,7 @@ fn transfer() {
                 None,
                 AccountIdentifier::new(to, None),
                 None,
-            ).await
+            )
         },
     )
 }
