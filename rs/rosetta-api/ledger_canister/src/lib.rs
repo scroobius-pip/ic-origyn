@@ -310,6 +310,17 @@ pub struct DIP20TransferArgs {
     pub amount: u64,
 }
 
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct BalanceOfArgs {
+    pub id: PrincipalId,
+}
+
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetAllowanceArgs {
+    pub owner: PrincipalId,
+    pub spender: PrincipalId,
+}
+
 #[derive(Debug, Clone)]
 pub struct TxRecord {
     pub caller: Option<PrincipalId>,

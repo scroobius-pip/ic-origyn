@@ -560,16 +560,26 @@ fn get_metadata() {
 }
 
 #[export_name = "canister_query balanceOf"]
-fn balance_of(id: PrincipalId) -> u64 {
-    LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(id, None)).get_e8s()
+fn balance_of() {
+    over(
+        candid_one,
+        |BalanceOfArgs { id }| -> u64 {
+            LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(id, None)).get_e8s()
+        }
+    );
 }
 
 #[export_name = "canister_query allowance"]
-fn allowance(owner: PrincipalId, spender: PrincipalId) -> u64 {
-    match LEDGER.read().unwrap().allowances.store.get_allowance(&owner, &spender) {
-        Ok(amount) => { amount }
-        _ => { 0 }
-    }
+fn get_allowance() {
+    over(
+        candid_one,
+        |GetAllowanceArgs { owner, spender }| -> u64 {
+            match LEDGER.read().unwrap().allowances.store.get_allowance(&owner, &spender) {
+                Ok(amount) => { amount }
+                _ => { 0 }
+            }
+        }
+    );
 }
 
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
