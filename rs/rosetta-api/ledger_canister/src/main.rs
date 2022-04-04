@@ -555,7 +555,7 @@ fn owner() {
 fn get_metadata() {
     over(
         candid_one,
-        ledger_canister::Metadata::default,
+        |()| ledger_canister::Metadata::default(),
     );
 }
 
