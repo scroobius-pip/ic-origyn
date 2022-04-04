@@ -552,8 +552,11 @@ fn owner() {
 }
 
 #[export_name = "canister_query getMetadata"]
-fn get_metadata() -> ledger_canister::Metadata {
-    ledger_canister::Metadata::default()
+fn get_metadata() {
+    over(
+        candid_one,
+        ledger_canister::Metadata::default,
+    );
 }
 
 #[export_name = "canister_query balanceOf"]
