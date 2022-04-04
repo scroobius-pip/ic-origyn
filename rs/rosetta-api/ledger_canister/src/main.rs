@@ -485,29 +485,29 @@ fn transfer() {
 pub async fn async_transfer_from(args: DIP20TransferFromArgs) -> u64 {
     let transfer_caller = caller();
 
-    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&from, &transfer_caller);
+    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&args.from, &transfer_caller);
     match allowance_result {
         Ok(allowance_amount) => {
-            if allowance_amount < amount.clone() + TRANSACTION_FEE.get_e8s() {
+            if allowance_amount < args.amount.clone() + TRANSACTION_FEE.get_e8s() {
                 panic!("Amount requested for transfer is lower than allowance amount.");
                 // return Err(TxError::InsufficientAllowance);
             }
-            let from_balance = LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(from.clone(), None));
-            if from_balance.get_e8s() < amount.clone() + TRANSACTION_FEE.get_e8s() {
+            let from_balance = LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(args.from.clone(), None));
+            if from_balance.get_e8s() < args.amount.clone() + TRANSACTION_FEE.get_e8s() {
                 panic!("Low balance.");
                 // return Err(TxError::InsufficientBalance);
             }
             send(
                 Memo(0),
-                ICPTs::from_e8s(amount.clone()),
+                ICPTs::from_e8s(args.amount.clone()),
                 TRANSACTION_FEE,
-                Some(Subaccount::from(&from)),
-                AccountIdentifier::new(to.clone(), None),
+                Some(Subaccount::from(&args.from)),
+                AccountIdentifier::new(args.to.clone(), None),
                 None).await
             // LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &transfer_caller);
             // Ok(amount)
         }
-        _ => { panic!("Allowance for {} doesn't exists.", from); }
+        _ => { panic!("Allowance for {} doesn't exists.", args.from); }
     }
 }
 
