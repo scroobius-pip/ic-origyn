@@ -523,22 +523,34 @@ fn transfer_from() {
 /// DIP20 query methods
 #[export_name = "canister_query logo"]
 fn get_logo() {
-    String::from("Logo");
+    over(
+        candid_one,
+        |()| ledger_canister::TOKEN_LOGO.to_string(),
+    );
 }
 
 #[export_name = "canister_query name"]
 fn name() {
-    String::from("OrigynToken");
+    over(
+        candid_one,
+        |()| ledger_canister::TOKEN_NAME.to_string(),
+    );
 }
 
 #[export_name = "canister_query symbol"]
 fn symbol() {
-    String::from("OGY");
+    over(
+        candid_one,
+        |()| ledger_canister::TOKEN_SYMBOL.to_string(),
+    );
 }
 
 #[export_name = "canister_query decimals"]
 fn decimals() {
-    // 0u8
+    over(
+        candid_one,
+        |()| ledger_canister::DECIMAL_PLACES
+    );
 }
 
 #[export_name = "canister_query totalSupply"]
@@ -548,7 +560,10 @@ fn _total_supply() {
 
 #[export_name = "canister_query owner"]
 fn owner() {
-    String::from("co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe");
+    over(
+        candid_one,
+        |()| ledger_canister::TOKEN_OWNER.to_string(),
+    );
 }
 
 #[export_name = "canister_query getMetadata"]

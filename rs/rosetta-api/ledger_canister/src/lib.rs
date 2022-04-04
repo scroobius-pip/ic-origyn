@@ -53,6 +53,10 @@ where
 }
 
 pub const HASH_LENGTH: usize = 32;
+pub const TOKEN_OWNER: &str = "co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe";
+pub const TOKEN_SYMBOL: &str = "OGY";
+pub const TOKEN_NAME: &str = "OrigynToken";
+pub const TOKEN_LOGO: &str = "Logo";
 
 #[derive(CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HashOf<T> {
@@ -236,7 +240,7 @@ pub struct Metadata {
     logo: String,
     name: String,
     symbol: String,
-    decimals: u8,
+    decimals: u32,
     totalSupply: u64,
     owner: String,
     fee: u64,
@@ -245,12 +249,12 @@ pub struct Metadata {
 impl Default for Metadata {
     fn default() -> Self {
         Self {
-            logo: "logo".to_string(),
-            name: "OrigynToken".to_string(),
-            symbol: "OGY".to_string(),
-            decimals: 0u8,
+            logo: TOKEN_LOGO.to_string(),
+            name: TOKEN_NAME.to_string(),
+            symbol: TOKEN_SYMBOL.to_string(),
+            decimals: DECIMAL_PLACES,
             totalSupply: LEDGER.read().unwrap().balances.total_supply().get_e8s(),
-            owner: "".to_string(),
+            owner: TOKEN_OWNER.to_string(),
             fee: TRANSACTION_FEE.get_e8s(),
         }
     }
