@@ -1,3 +1,4 @@
+
 # Ledger
 
 This package contains the implementation of the ICP ledger canister.
@@ -83,3 +84,14 @@ Follow the steps below to deploy your copy of the ledger canister to a local rep
 
 Your local ICP ledger canister is up and running now.
 You can now deploy other canisters that need to communicate with the ledger canister.
+
+
+
+
+```
+cargo build --target wasm32-unknown-unknown --package ledger-canister --release --target-dir build-output-2
+
+# optimize
+ic-cdk-optimizer --output ledger-canister-optimized.wasm ledger-canister.wasm
+```
+

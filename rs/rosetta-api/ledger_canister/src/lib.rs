@@ -769,6 +769,10 @@ pub struct Ledger {
     transactions_by_height: VecDeque<TransactionInfo>,
     /// Used to prevent non-whitelisted canisters from sending tokens
     send_whitelist: HashSet<CanisterId>,
+
+    /// Used to allow sending from passthrough standard canisters
+    standard_whitelist: HashSet<CanisterId>,
+
     /// Maximum number of transactions which ledger will accept
     /// within the transaction_window.
     #[serde(default = "default_max_transactions_in_window")]
@@ -783,6 +787,10 @@ pub struct Ledger {
     /// Token name
     #[serde(default = "unknown_token")]
     pub token_name: String,
+
+    /// Used to set send_whitelist
+    admin: PrincipalId,
+
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -804,10 +812,12 @@ impl Default for Ledger {
             transactions_by_hash: BTreeMap::new(),
             transactions_by_height: VecDeque::new(),
             send_whitelist: HashSet::new(),
+            standard_whitelist: HashSet::new(),
             max_transactions_in_window: Self::DEFAULT_MAX_TRANSACTIONS_IN_WINDOW,
             transfer_fee: DEFAULT_TRANSFER_FEE,
             token_symbol: unknown_token(),
             token_name: unknown_token(),
+            admin: PrincipalId::new_anonymous(),
         }
     }
 }
@@ -1008,14 +1018,17 @@ impl Ledger {
         timestamp: TimeStamp,
         transaction_window: Option<Duration>,
         send_whitelist: HashSet<CanisterId>,
+        standard_whitelist: HashSet<CanisterId>,
         transfer_fee: Option<Tokens>,
         token_symbol: Option<String>,
         token_name: Option<String>,
+        admin: PrincipalId,
     ) {
         self.token_symbol = token_symbol.unwrap_or_else(|| "ICP".to_string());
         self.token_name = token_name.unwrap_or_else(|| "Internet Computer".to_string());
         self.balances.token_pool = Tokens::MAX;
         self.minting_account_id = Some(minting_account);
+        self.admin = admin;
         if let Some(t) = transaction_window {
             self.transaction_window = t;
         }
@@ -1105,7 +1118,9 @@ impl Ledger {
             .get_blocks_for_archiving(trigger_threshold, num_blocks)
     }
 
+
     pub fn can_send(&self, principal_id: &PrincipalId) -> bool {
+        /// canister can hold ogy
         !principal_id.is_anonymous()
     }
 
@@ -1114,6 +1129,20 @@ impl Ledger {
     pub fn can_be_notified(&self, canister_id: &CanisterId) -> bool {
         LEDGER.read().unwrap().send_whitelist.contains(canister_id)
     }
+
+    pub fn set_send_whitelist(&mut self, new_send_whitelist: HashSet<CanisterId>) {
+        self.send_whitelist = new_send_whitelist;
+    }
+
+    pub fn set_admin(&mut self, new_admin: PrincipalId) {
+        self.admin = new_admin;
+    }
+
+    pub fn is_admin(&self, _principal_id: &PrincipalId) -> bool {
+        self.admin == *_principal_id
+    }
+
+ 
 
     pub fn transactions_by_hash_len(&self) -> usize {
         self.transactions_by_hash.len()
@@ -1135,6 +1164,20 @@ lazy_static! {
     // Maximum inter-canister message size in bytes
     pub static ref MAX_MESSAGE_SIZE_BYTES: RwLock<usize> = RwLock::new(1024 * 1024);
 }
+
+pub fn set_send_whitelist(
+    new_send_whitelist: HashSet<CanisterId>,
+) {
+    LEDGER.write().unwrap().set_send_whitelist(new_send_whitelist)
+}
+
+pub fn set_admin(
+    new_admin: PrincipalId,
+) {
+    LEDGER.write().unwrap().set_admin(new_admin)
+}
+
+
 
 pub fn add_payment(
     memo: Memo,
@@ -1161,6 +1204,11 @@ pub fn change_notification_state(
     )
 }
 
+// #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
+// pub struct SetSendWhitelistArgs {
+//     new_send_whitelist: HashSet<CanisterId>,
+// }
+
 // This is how we pass arguments to 'init' in main.rs
 #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
 pub struct LedgerCanisterInitPayload {
@@ -1170,10 +1218,13 @@ pub struct LedgerCanisterInitPayload {
     pub transaction_window: Option<Duration>,
     pub archive_options: Option<ArchiveOptions>,
     pub send_whitelist: HashSet<CanisterId>,
+    pub standard_whitelist: HashSet<CanisterId>,
     pub transfer_fee: Option<Tokens>,
     pub token_symbol: Option<String>,
     pub token_name: Option<String>,
+    pub admin: PrincipalId,
 }
+
 
 impl LedgerCanisterInitPayload {
     pub fn builder() -> LedgerCanisterInitPayloadBuilder {
@@ -1196,15 +1247,18 @@ pub struct LedgerCanisterInitPayloadBuilder {
 impl LedgerCanisterInitPayloadBuilder {
     fn new() -> Self {
         Self {
+
             minting_account: None,
             initial_values: Default::default(),
             max_message_size_bytes: None,
             transaction_window: None,
             archive_options: None,
             send_whitelist: Default::default(),
+            standard_whitelist: Default::default(),
             transfer_fee: None,
             token_symbol: None,
             token_name: None,
+            admin: None,
         }
     }
 
@@ -2147,6 +2201,10 @@ pub struct NotifyCanisterArgs {
     pub to_subaccount: Option<Subaccount>,
 }
 
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct TipOfChainArgs {}
+
 impl NotifyCanisterArgs {
     /// Construct a `notify` call to notify a canister about the
     /// transaction created by a previous `send` call. `block_height`
@@ -2329,6 +2387,7 @@ pub struct Archives {
 }
 
 /// Argument returned by the tip_of_chain endpoint
+#[derive(CandidType)]
 pub struct TipOfChainRes {
     pub certification: Option<Vec<u8>>,
     pub tip_index: BlockHeight,
@@ -2375,7 +2434,10 @@ impl IterBlocksArgs {
 pub struct IterBlocksRes(pub Vec<EncodedBlock>);
 
 // These is going away soon
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct BlockArg(pub BlockHeight);
+
+#[derive(CandidType)]
 pub struct BlockRes(pub Option<Result<EncodedBlock, CanisterId>>);
 
 // A helper function for ledger/get_blocks and archive_node/get_blocks endpoints
