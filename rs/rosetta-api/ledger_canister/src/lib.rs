@@ -55,8 +55,8 @@ where
 pub const HASH_LENGTH: usize = 32;
 pub const TOKEN_OWNER: &str = "co3tn-y5tnx-jgerr-xakdk-d54wf-7fbp7-woq6e-rapde-t4w6z-mtrfc-5qe";
 pub const TOKEN_SYMBOL: &str = "OGY";
-pub const TOKEN_NAME: &str = "OrigynToken";
-pub const TOKEN_LOGO: &str = "Logo";
+pub const DEFAULT_TOKEN_NAME: &str = "OrigynToken";
+pub const DEFAULT_TOKEN_LOGO: &str = "Logo";
 
 #[derive(CandidType, Clone, Hash, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct HashOf<T> {
@@ -250,8 +250,8 @@ pub struct Metadata {
 impl Default for Metadata {
     fn default() -> Self {
         Self {
-            logo: TOKEN_LOGO.to_string(),
-            name: TOKEN_NAME.to_string(),
+            logo: DEFAULT_TOKEN_LOGO.to_string(),
+            name: DEFAULT_TOKEN_NAME.to_string(),
             symbol: TOKEN_SYMBOL.to_string(),
             decimals: DECIMAL_PLACES,
             totalSupply: LEDGER.read().unwrap().balances.total_supply().get_e8s(),
@@ -1266,6 +1266,9 @@ lazy_static! {
     pub static ref LEDGER: RwLock<Ledger> = RwLock::new(Ledger::default());
     // Maximum inter-canister message size in bytes
     pub static ref MAX_MESSAGE_SIZE_BYTES: RwLock<usize> = RwLock::new(1024 * 1024);
+    pub static ref TOKEN_NAME: RwLock<String> = RwLock::new(DEFAULT_TOKEN_NAME.to_string());
+    pub static ref TOKEN_LOGO: RwLock<String> = RwLock::new(DEFAULT_TOKEN_LOGO.to_string());
+    pub static ref LEDGER_TRANSACTION_FEE: RwLock<ICPTs> = RwLock::new(TRANSACTION_FEE);
 }
 
 pub fn set_send_whitelist(new_send_whitelist: HashSet<CanisterId>) {
@@ -2045,8 +2048,14 @@ pub struct GetMintingAccountArgs {}
 //Optinal DIP20 call struct
 /// Argument taken by the mint endpoint
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
-pub struct MintArgs {
+pub struct DIP20MintArgs {
     pub to: PrincipalId,
+    pub amount: u64,
+}
+/// Argument taken by the burn endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct DIP20BurnArgs {
+    pub from: PrincipalId,
     pub amount: u64,
 }
 
