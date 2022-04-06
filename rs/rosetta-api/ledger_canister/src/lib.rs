@@ -1024,8 +1024,8 @@ impl Ledger {
         token_name: Option<String>,
         admin: PrincipalId,
     ) {
-        self.token_symbol = token_symbol.unwrap_or_else(|| "ICP".to_string());
-        self.token_name = token_name.unwrap_or_else(|| "Internet Computer".to_string());
+        self.token_symbol = token_symbol.unwrap_or_else(|| "OGY".to_string());
+        self.token_name = token_name.unwrap_or_else(|| "Origyn".to_string());
         self.balances.token_pool = Tokens::MAX;
         self.minting_account_id = Some(minting_account);
         self.admin = admin;
@@ -1118,11 +1118,20 @@ impl Ledger {
             .get_blocks_for_archiving(trigger_threshold, num_blocks)
     }
 
-
+    /// canister can hold ogy
     pub fn can_send(&self, principal_id: &PrincipalId) -> bool {
-        /// canister can hold ogy
+        
         !principal_id.is_anonymous()
     }
+
+    pub fn is_standard(&self, _principal_id: &PrincipalId) -> bool {
+        LEDGER
+        .read()
+        .unwrap()
+        .standard_whitelist
+        .contains(&CanisterId::new(*_principal_id).unwrap())
+     }
+        
 
     /// Check if it's allowed to notify this canister
     /// Currently we reuse whitelist for that
@@ -1132,6 +1141,10 @@ impl Ledger {
 
     pub fn set_send_whitelist(&mut self, new_send_whitelist: HashSet<CanisterId>) {
         self.send_whitelist = new_send_whitelist;
+    }
+
+    pub fn set_standard_whitelist(&mut self, new_standard_whitelist: HashSet<CanisterId>) {
+        self.standard_whitelist = new_standard_whitelist;
     }
 
     pub fn set_admin(&mut self, new_admin: PrincipalId) {
@@ -1169,6 +1182,12 @@ pub fn set_send_whitelist(
     new_send_whitelist: HashSet<CanisterId>,
 ) {
     LEDGER.write().unwrap().set_send_whitelist(new_send_whitelist)
+}
+
+pub fn set_standard_whitelist(
+    new_standard_whitelist: HashSet<CanisterId>,
+) {
+    LEDGER.write().unwrap().set_standard_whitelist(new_standard_whitelist)
 }
 
 pub fn set_admin(
@@ -1239,9 +1258,11 @@ pub struct LedgerCanisterInitPayloadBuilder {
     transaction_window: Option<Duration>,
     archive_options: Option<ArchiveOptions>,
     send_whitelist: HashSet<CanisterId>,
+    standard_whitelist: HashSet<CanisterId>,
     transfer_fee: Option<Tokens>,
     token_symbol: Option<String>,
     token_name: Option<String>,
+    admin: PrincipalId,
 }
 
 impl LedgerCanisterInitPayloadBuilder {
@@ -1258,7 +1279,7 @@ impl LedgerCanisterInitPayloadBuilder {
             transfer_fee: None,
             token_symbol: None,
             token_name: None,
-            admin: None,
+            admin: Default::default(),
         }
     }
 
@@ -1328,9 +1349,11 @@ impl LedgerCanisterInitPayloadBuilder {
             transaction_window: self.transaction_window,
             archive_options: self.archive_options,
             send_whitelist: self.send_whitelist,
+            standard_whitelist: self.standard_whitelist,
             transfer_fee: self.transfer_fee,
             token_symbol: self.token_symbol,
             token_name: self.token_name,
+            admin: self.admin
         })
     }
 }
@@ -2099,6 +2122,18 @@ pub struct SendArgs {
     pub created_at_time: Option<TimeStamp>,
 }
 
+/// Argument taken by the send endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct SendStandardArgs {
+    pub memo: Memo,
+    pub amount: Tokens,
+    pub fee: Tokens,
+    pub from_principal: PrincipalId,
+    pub from_subaccount: Option<Subaccount>,
+    pub to: AccountIdentifier,
+    pub created_at_time: Option<TimeStamp>,
+}
+
 impl From<SendArgs> for TransferArgs {
     fn from(
         SendArgs {
@@ -2121,6 +2156,30 @@ impl From<SendArgs> for TransferArgs {
     }
 }
 
+impl From<SendStandardArgs> for TransferStandardArgs {
+    fn from(
+        SendStandardArgs {
+            memo,
+            amount,
+            fee,
+            from_principal,
+            from_subaccount,
+            to,
+            created_at_time,
+        }: SendStandardArgs,
+    ) -> Self {
+        Self {
+            memo,
+            amount,
+            fee,
+            from_principal,
+            from_subaccount,
+            to: to.to_address(),
+            created_at_time,
+        }
+    }
+}
+
 pub type AccountIdBlob = [u8; 32];
 
 /// Argument taken by the transfer endpoint
@@ -2129,6 +2188,18 @@ pub struct TransferArgs {
     pub memo: Memo,
     pub amount: Tokens,
     pub fee: Tokens,
+    pub from_subaccount: Option<Subaccount>,
+    pub to: AccountIdBlob,
+    pub created_at_time: Option<TimeStamp>,
+}
+
+/// Argument taken by the transfer_standard_stdleg endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct TransferStandardArgs {
+    pub memo: Memo,
+    pub amount: Tokens,
+    pub fee: Tokens,
+    pub from_principal: PrincipalId,
     pub from_subaccount: Option<Subaccount>,
     pub to: AccountIdBlob,
     pub created_at_time: Option<TimeStamp>,

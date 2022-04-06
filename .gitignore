@@ -94,3 +94,5 @@ boundary-node-control-plane
 scalability/results/
 *Pipfile*
 rs/rosetta-api/build-output-2/
+rs/rosetta-api/originalogyledger/release/
+rs/rosetta-api/originalogyledger/
