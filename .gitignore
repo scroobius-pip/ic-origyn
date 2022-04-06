@@ -93,3 +93,4 @@ boundary-node-control-plane
 # Scalability test results
 scalability/results/
 *Pipfile*
+rs/rosetta-api/build-output-2/
