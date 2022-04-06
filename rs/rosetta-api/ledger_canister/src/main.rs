@@ -54,10 +54,7 @@ fn init(
         minting_account
     ));
     let caller_principal_id = caller();
-    print(format!(
-        "[ledger] init(): caller {}",
-        caller_principal_id
-    ));
+    print(format!("[ledger] init(): caller {}", caller_principal_id));
     LEDGER.write().unwrap().from_init(
         initial_values,
         minting_account,
@@ -454,12 +451,9 @@ fn pre_upgrade() {
 /// DIP20 update methods
 #[export_name = "canister_update approve"]
 fn approve() {
-    over(candid_one, |ApproveAllowanceArgs{
-            to,
-            amount,
-        }| {
-            let caller_principal_id = caller();
-            // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
+    over(candid_one, |ApproveAllowanceArgs { to, amount }| {
+        let caller_principal_id = caller();
+        // LEDGER.read().unwrap().allowances.store.set_allowance(&caller_principal_id, &to, amount);
     });
 }
 
@@ -471,28 +465,35 @@ pub async fn async_transfer(args: DIP20TransferArgs) -> u64 {
         None,
         AccountIdentifier::new(args.to, None),
         None,
-    ).await
+    )
+    .await
 }
 
 #[export_name = "canister_update transfer"]
 fn transfer() {
-    over_async(
-        candid_one,
-        async_transfer,
-    )
+    over_async(candid_one, async_transfer)
 }
 
 pub async fn async_transfer_from(args: DIP20TransferFromArgs) -> u64 {
     let transfer_caller = caller();
 
-    let allowance_result = LEDGER.read().unwrap().allowances.store.get_allowance(&args.from, &transfer_caller);
+    let allowance_result = LEDGER
+        .read()
+        .unwrap()
+        .allowances
+        .store
+        .get_allowance(&args.from, &transfer_caller);
     match allowance_result {
         Ok(allowance_amount) => {
             if allowance_amount < args.amount.clone() + TRANSACTION_FEE.get_e8s() {
                 panic!("Amount requested for transfer is lower than allowance amount.");
                 // return Err(TxError::InsufficientAllowance);
             }
-            let from_balance = LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(args.from.clone(), None));
+            let from_balance = LEDGER
+                .read()
+                .unwrap()
+                .balances
+                .account_balance(&AccountIdentifier::new(args.from.clone(), None));
             if from_balance.get_e8s() < args.amount.clone() + TRANSACTION_FEE.get_e8s() {
                 panic!("Low balance.");
                 // return Err(TxError::InsufficientBalance);
@@ -503,54 +504,43 @@ pub async fn async_transfer_from(args: DIP20TransferFromArgs) -> u64 {
                 TRANSACTION_FEE,
                 Some(Subaccount::from(&args.from)),
                 AccountIdentifier::new(args.to.clone(), None),
-                None).await
+                None,
+            )
+            .await
             // LEDGER.read().unwrap().allowances.store.drop_allowance(&from, &transfer_caller);
             // Ok(amount)
         }
-        _ => { panic!("Allowance for {} doesn't exists.", args.from); }
+        _ => {
+            panic!("Allowance for {} doesn't exists.", args.from);
+        }
     }
 }
 
 #[export_name = "canister_update transferFrom"]
 fn transfer_from() {
-    over_async(
-        candid_one,
-        async_transfer_from,
-    );
+    over_async(candid_one, async_transfer_from);
     // Ok(0u64)
 }
 
 /// DIP20 query methods
 #[export_name = "canister_query logo"]
 fn get_logo() {
-    over(
-        candid_one,
-        |()| ledger_canister::TOKEN_LOGO.to_string(),
-    );
+    over(candid_one, |()| ledger_canister::TOKEN_LOGO.to_string());
 }
 
 #[export_name = "canister_query name"]
 fn name() {
-    over(
-        candid_one,
-        |()| ledger_canister::TOKEN_NAME.to_string(),
-    );
+    over(candid_one, |()| ledger_canister::TOKEN_NAME.to_string());
 }
 
 #[export_name = "canister_query symbol"]
 fn symbol() {
-    over(
-        candid_one,
-        |()| ledger_canister::TOKEN_SYMBOL.to_string(),
-    );
+    over(candid_one, |()| ledger_canister::TOKEN_SYMBOL.to_string());
 }
 
 #[export_name = "canister_query decimals"]
 fn decimals() {
-    over(
-        candid_one,
-        |()| ledger_canister::DECIMAL_PLACES
-    );
+    over(candid_one, |()| ledger_canister::DECIMAL_PLACES);
 }
 
 #[export_name = "canister_query totalSupply"]
@@ -560,41 +550,71 @@ fn _total_supply() {
 
 #[export_name = "canister_query owner"]
 fn owner() {
-    over(
-        candid_one,
-        |()| ledger_canister::TOKEN_OWNER.to_string(),
-    );
+    over(candid_one, |()| ledger_canister::TOKEN_OWNER.to_string());
 }
 
 #[export_name = "canister_query getMetadata"]
 fn get_metadata() {
-    over(
-        candid_one,
-        |()| ledger_canister::Metadata::default(),
-    );
+    over(candid_one, |()| ledger_canister::Metadata::default());
 }
 
 #[export_name = "canister_query balanceOf"]
 fn balance_of() {
-    over(
-        candid_one,
-        |BalanceOfArgs { id }| -> u64 {
-            LEDGER.read().unwrap().balances.account_balance(&AccountIdentifier::new(id, None)).get_e8s()
-        }
-    );
+    over(candid_one, |BalanceOfArgs { id }| -> u64 {
+        LEDGER
+            .read()
+            .unwrap()
+            .balances
+            .account_balance(&AccountIdentifier::new(id, None))
+            .get_e8s()
+    });
 }
 
 #[export_name = "canister_query allowance"]
 fn get_allowance() {
-    over(
-        candid_one,
-        |GetAllowanceArgs { owner, spender }| -> u64 {
-            match LEDGER.read().unwrap().allowances.store.get_allowance(&owner, &spender) {
-                Ok(amount) => { amount }
-                _ => { 0 }
-            }
+    over(candid_one, |GetAllowanceArgs { owner, spender }| -> u64 {
+        match LEDGER
+            .read()
+            .unwrap()
+            .allowances
+            .store
+            .get_allowance(&owner, &spender)
+        {
+            Ok(amount) => amount,
+            _ => 0,
         }
+    });
+}
+
+//DIP 20 optional method.
+
+//func mint(to: Principal, value: Nat): async TxReceipt
+pub async fn async_mint(args: MintArgs) -> u64 {
+    //verify the caller has the right to mint.
+    //Must be tested otherwise non mint caller will generate a transfer when calling send.
+    let caller_account_id: AccountIdentifier = caller().into();
+    assert!(
+        ledger_canister::get_minting_account_id()
+            .map(|mint_id| caller_account_id == mint_id)
+            .unwrap_or(false),
+        "Not authorized to mint {}",
+        caller_account_id
     );
+    //send mint transfer (detected with Zero fee and caller is mint id.
+    send(
+        Memo(0),
+        ICPTs::from_e8s(args.amount),
+        ICPTs::ZERO,
+        None,
+        AccountIdentifier::new(args.to.clone(), None),
+        None,
+    )
+    .await
+}
+
+#[export_name = "canister_update mint"]
+fn mint() {
+    over_async(candid_one, async_mint);
 }
 
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
@@ -723,7 +743,7 @@ fn set_minting_account_dfx_() {
 
 #[export_name = "canister_query get_minting_account_id_dfx"]
 fn get_minting_account_dfx_() {
-    over(candid_one, |GetMintingAccountArgs{}| {
+    over(candid_one, |GetMintingAccountArgs {}| {
         ledger_canister::get_minting_account_id()
     });
 }
@@ -782,10 +802,7 @@ async fn _get_block_dfx(height: u64) -> Result<Result<Block, CanisterId>, String
         match block(height).unwrap_or_else(|| panic!("Block {} not found", height)) {
             Ok(raw_block) => raw_block,
             Err(cid) => {
-                print(format!(
-                    "Searching canister {} for block {}",
-                    cid, height
-                ));
+                print(format!("Searching canister {} for block {}", cid, height));
                 // Lookup the block on the archive
                 let BlockRes(res) = call_with_cleanup(cid, "get_block_pb", protobuf, height)
                     .await
@@ -794,10 +811,9 @@ async fn _get_block_dfx(height: u64) -> Result<Result<Block, CanisterId>, String
                     .map_err(|c| format!("Tried to redirect lookup a second time to {}", c))?
             }
         };
-        let block = raw_block.decode().unwrap();
-        Ok(Ok(block))
+    let block = raw_block.decode().unwrap();
+    Ok(Ok(block))
 }
-
 
 /// See caveats of use on send_dfx
 #[export_name = "canister_update notify_dfx"]
@@ -836,12 +852,14 @@ fn block_dfx_() {
 
 #[export_name = "canister_query get_send_whitelist_dfx"]
 fn get_send_whitelist_dfx_() {
-    over(candid_one, |GetSendWhitelistArgs{}| ledger_canister::get_send_whitelist());
+    over(candid_one, |GetSendWhitelistArgs {}| {
+        ledger_canister::get_send_whitelist()
+    });
 }
 
 #[export_name = "canister_query get_admin_dfx"]
 fn get_admin_dfx_() {
-    over(candid_one, |GetAdminArgs{}| ledger_canister::get_admin());
+    over(candid_one, |GetAdminArgs {}| ledger_canister::get_admin());
 }
 
 #[export_name = "canister_query tip_of_chain_pb"]
@@ -851,7 +869,7 @@ fn tip_of_chain_() {
 
 #[export_name = "canister_query tip_of_chain_dfx"]
 fn tip_of_chain_dfx_() {
-    over(candid_one, |TipOfChainArgs{}| tip_of_chain());
+    over(candid_one, |TipOfChainArgs {}| tip_of_chain());
 }
 
 #[export_name = "canister_query get_archive_index_pb"]
@@ -904,7 +922,7 @@ fn total_supply_() {
 
 #[export_name = "canister_query total_supply_dfx"]
 fn total_supply_dfx_() {
-    over(candid_one, |TotalSupplyArgs{}| total_supply())
+    over(candid_one, |TotalSupplyArgs {}| total_supply())
 }
 
 /// Get multiple blocks by *offset into the container* (not BlockHeight) and
