@@ -163,8 +163,8 @@ async fn send(
         }
         Transfer::Burn { from, amount }
     } else {
-        let ledger_fee = LEDGER_TRANSACTION_FEE.read().unwrap();
-        if fee != *ledger_fee {
+        let ledger_fee = TOKEN_METADATA.read().unwrap().get_fee();
+        if fee != ledger_fee {
             panic!("Transaction fee should be {}", ledger_fee);
         }
         Transfer::Send {
@@ -215,8 +215,8 @@ pub async fn notify(
 
     let expected_to = AccountIdentifier::new(to_canister.get(), to_subaccount);
 
-    let ledger_fee = LEDGER_TRANSACTION_FEE.read().unwrap();
-    if max_fee != *ledger_fee {
+    let ledger_fee = TOKEN_METADATA.read().unwrap().get_fee();
+    if max_fee != ledger_fee {
         panic!("Transaction fee should be {}", ledger_fee);
     }
 
@@ -467,7 +467,7 @@ pub async fn async_transfer(args: DIP20TransferArgs) -> u64 {
     send(
         Memo(0),
         ICPTs::from_e8s(args.amount),
-        *LEDGER_TRANSACTION_FEE.read().unwrap(),
+        TOKEN_METADATA.read().unwrap().get_fee(),
         None,
         AccountIdentifier::new(args.to, None),
         None,
@@ -489,7 +489,7 @@ pub async fn async_transfer_from(args: DIP20TransferFromArgs) -> u64 {
         .allowances
         .store
         .get_allowance(&args.from, &transfer_caller);
-    let ledger_fee = LEDGER_TRANSACTION_FEE.read().unwrap();
+    let ledger_fee = TOKEN_METADATA.read().unwrap().get_fee();
     match allowance_result {
         Ok(allowance_amount) => {
             if allowance_amount < args.amount.clone() + ledger_fee.get_e8s() {
@@ -508,7 +508,7 @@ pub async fn async_transfer_from(args: DIP20TransferFromArgs) -> u64 {
             send(
                 Memo(0),
                 ICPTs::from_e8s(args.amount.clone()),
-                *ledger_fee,
+                ledger_fee,
                 Some(Subaccount::from(&args.from)),
                 AccountIdentifier::new(args.to.clone(), None),
                 None,
@@ -533,14 +533,22 @@ fn transfer_from() {
 #[export_name = "canister_query logo"]
 fn get_logo() {
     over(candid_one, |()| {
-        ledger_canister::TOKEN_LOGO.read().unwrap().to_string()
+        ledger_canister::TOKEN_METADATA
+            .read()
+            .unwrap()
+            .logo
+            .to_string()
     });
 }
 
 #[export_name = "canister_query name"]
 fn name() {
     over(candid_one, |()| {
-        ledger_canister::TOKEN_NAME.read().unwrap().to_string()
+        ledger_canister::TOKEN_METADATA
+            .read()
+            .unwrap()
+            .name
+            .to_string()
     });
 }
 
@@ -600,62 +608,61 @@ fn get_allowance() {
 //DIP 20 optional methods.
 
 //Mint
-pub async fn async_mint(args: DIP20MintArgs) -> u64 {
-    //verify the caller has the right to mint.
-    //Must be tested otherwise non mint caller will generate a transfer when calling send.
-    let caller_account_id: AccountIdentifier = caller().into();
-    assert!(
-        ledger_canister::get_minting_account_id()
-            .map(|mint_id| caller_account_id == mint_id)
-            .unwrap_or(false),
-        "Not authorized to mint {}",
-        caller_account_id
-    );
-    //send mint transfer (detected with Zero fee and caller is mint id.
-    send(
-        Memo(0),
-        ICPTs::from_e8s(args.amount),
-        ICPTs::ZERO,
-        None,
-        AccountIdentifier::new(args.to.clone(), None),
-        None,
-    )
-    .await
-}
-
 //func mint(to: Principal, value: Nat): async TxReceipt
 #[export_name = "canister_update mint"]
 fn mint() {
+    pub async fn async_mint(args: DIP20MintArgs) -> u64 {
+        //verify the caller has the right to mint.
+        //Must be tested otherwise non mint caller will generate a transfer when calling send.
+        let caller_account_id: AccountIdentifier = caller().into();
+        assert!(
+            ledger_canister::get_minting_account_id()
+                .map(|mint_id| caller_account_id == mint_id)
+                .unwrap_or(false),
+            "Not authorized to mint {}",
+            caller_account_id
+        );
+        //send mint transfer (detected with Zero fee and caller is mint id.
+        send(
+            Memo(0),
+            ICPTs::from_e8s(args.amount),
+            ICPTs::ZERO,
+            None,
+            AccountIdentifier::new(args.to.clone(), None),
+            None,
+        )
+        .await
+    }
     over_async(candid_one, async_mint);
 }
 
 //Burn
-pub async fn async_burn(args: DIP20BurnArgs) -> u64 {
-    //verify the caller has the right to burn. Mint authority can burn.
-    //Must be tested otherwise non mint caller will generate a transfer when calling send.
-    let caller_account_id: AccountIdentifier = caller().into();
-    let mint_account = ledger_canister::get_minting_account_id()
-        .or_else(|| panic!("Mint authority not defined"))
-        .unwrap();
-    assert!(
-        caller_account_id == mint_account,
-        "Not authorized to burn {}",
-        caller_account_id
-    );
-    //send burn transfer (detected with Zero fee and caller is mint id.
-    send(
-        Memo(0),
-        ICPTs::from_e8s(args.amount),
-        ICPTs::ZERO,
-        Some(Subaccount::from(&args.from)),
-        mint_account,
-        None,
-    )
-    .await
-}
 //func burn(from: Principal, value: Nat): async TxReceipt
 #[export_name = "canister_update burn"]
 fn burn() {
+    pub async fn async_burn(args: DIP20BurnArgs) -> u64 {
+        //verify the caller has the right to burn. Mint authority can burn.
+        //Must be tested otherwise non mint caller will generate a transfer when calling send.
+        let caller_account_id: AccountIdentifier = caller().into();
+        let mint_account = ledger_canister::get_minting_account_id()
+            .or_else(|| panic!("Mint authority not defined"))
+            .unwrap();
+        assert!(
+            caller_account_id == mint_account,
+            "Not authorized to burn {}",
+            caller_account_id
+        );
+        //send burn transfer (detected with Zero fee and caller is mint id.
+        send(
+            Memo(0),
+            ICPTs::from_e8s(args.amount),
+            ICPTs::ZERO,
+            Some(Subaccount::from(&args.from)),
+            mint_account,
+            None,
+        )
+        .await
+    }
     over_async(candid_one, async_burn);
 }
 
@@ -667,8 +674,8 @@ fn set_name(name: String) {
         if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
             panic!("Not authorized {}", caller_principal_id);
         };
-        let mut token_name = ledger_canister::TOKEN_NAME.write().unwrap();
-        *token_name = name;
+        let mut token = ledger_canister::TOKEN_METADATA.write().unwrap();
+        token.name = name;
     })
 }
 
@@ -680,8 +687,8 @@ fn set_logo(logo: String) {
         if !LEDGER.read().unwrap().is_admin(&caller_principal_id) {
             panic!("Not authorized {}", caller_principal_id);
         };
-        let mut token_logo = ledger_canister::TOKEN_LOGO.write().unwrap();
-        *token_logo = logo;
+        let mut token = ledger_canister::TOKEN_METADATA.write().unwrap();
+        token.logo = logo;
     })
 }
 
@@ -694,8 +701,8 @@ fn set_fee(new_fee: u64) {
             panic!("Not authorized {}", caller_principal_id);
         };
 
-        let mut ledger_fee = ledger_canister::LEDGER_TRANSACTION_FEE.write().unwrap();
-        *ledger_fee = ICPTs::from_e8s(new_fee);
+        let mut token = ledger_canister::TOKEN_METADATA.write().unwrap();
+        token.set_fee(new_fee);
     })
 }
 

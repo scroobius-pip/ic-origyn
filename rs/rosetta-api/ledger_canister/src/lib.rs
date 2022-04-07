@@ -238,8 +238,8 @@ pub type TxReceipt = Result<u64, TxError>;
 #[allow(non_snake_case)]
 #[derive(Deserialize, CandidType, Clone, Debug)]
 pub struct Metadata {
-    logo: String,
-    name: String,
+    pub logo: String,
+    pub name: String,
     symbol: String,
     decimals: u32,
     totalSupply: u64,
@@ -247,8 +247,8 @@ pub struct Metadata {
     fee: u64,
 }
 
-impl Default for Metadata {
-    fn default() -> Self {
+impl Metadata {
+    pub fn new() -> Metadata {
         Self {
             logo: DEFAULT_TOKEN_LOGO.to_string(),
             name: DEFAULT_TOKEN_NAME.to_string(),
@@ -258,6 +258,20 @@ impl Default for Metadata {
             owner: TOKEN_OWNER.to_string(),
             fee: TRANSACTION_FEE.get_e8s(),
         }
+    }
+
+    pub fn get_fee(&self) -> ICPTs {
+        ICPTs::from_e8s(self.fee)
+    }
+
+    pub fn set_fee(&mut self, fee: u64) {
+        self.fee = fee;
+    }
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Metadata::new()
     }
 }
 
@@ -1266,9 +1280,9 @@ lazy_static! {
     pub static ref LEDGER: RwLock<Ledger> = RwLock::new(Ledger::default());
     // Maximum inter-canister message size in bytes
     pub static ref MAX_MESSAGE_SIZE_BYTES: RwLock<usize> = RwLock::new(1024 * 1024);
-    pub static ref TOKEN_NAME: RwLock<String> = RwLock::new(DEFAULT_TOKEN_NAME.to_string());
-    pub static ref TOKEN_LOGO: RwLock<String> = RwLock::new(DEFAULT_TOKEN_LOGO.to_string());
-    pub static ref LEDGER_TRANSACTION_FEE: RwLock<ICPTs> = RwLock::new(TRANSACTION_FEE);
+    pub static ref TOKEN_METADATA: RwLock<Metadata> = RwLock::new(Metadata::default());
+//    pub static ref TOKEN_LOGO: RwLock<String> = RwLock::new(DEFAULT_TOKEN_LOGO.to_string());
+//    pub static ref LEDGER_TRANSACTION_FEE: RwLock<ICPTs> = RwLock::new(TRANSACTION_FEE);
 }
 
 pub fn set_send_whitelist(new_send_whitelist: HashSet<CanisterId>) {
