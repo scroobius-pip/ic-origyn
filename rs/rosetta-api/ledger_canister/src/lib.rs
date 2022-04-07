@@ -326,15 +326,15 @@ pub struct GetAllowanceArgs {
     pub spender: PrincipalId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, CandidType)]
 pub struct TxRecord {
     pub caller: Option<PrincipalId>,
     pub index: u64,
-    pub from: PrincipalId,
-    pub to: PrincipalId,
+    pub from: AccountIdentifier,
+    pub to: AccountIdentifier,
     pub amount: u64,
     pub fee: u64,
-    pub timestamp: u32,
+    pub timestamp: TimeStamp,
     pub status: TransactionStatus,
     pub operation: Operation,
 }
@@ -2141,7 +2141,7 @@ pub struct IterBlocksRes(pub Vec<EncodedBlock>);
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct BlockArg(pub BlockHeight);
 
-#[derive(CandidType)]
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct BlockRes(pub Option<Result<EncodedBlock, CanisterId>>);
 
 // A helper function for ledger/get_blocks and archive_node/get_blocks endpoints

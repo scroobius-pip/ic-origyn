@@ -1,3 +1,6 @@
+use candid::ser::ArgumentEncoder;
+use candid::ser::IDLBuilder;
+use candid::CandidType;
 use dfn_candid::{candid_one, CandidOne};
 use dfn_core::{
     api::{
@@ -12,6 +15,7 @@ use ic_types::CanisterId;
 use ic_types::PrincipalId;
 use ledger_canister::*;
 use on_wire::IntoWire;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use archive::FailedToArchiveBlocks;
@@ -710,6 +714,95 @@ fn set_owner(new_owner: PrincipalId) {
 }
 
 //End DIP 20 optional methods
+
+//DIP 20 Query calls
+
+// func historySize() : async Nat
+//return last block height
+#[export_name = "canister_update historySize"]
+fn history_size() {
+    over(candid_one, |()| {
+        LEDGER.read().unwrap().blockchain.chain_length()
+    })
+}
+
+//func getTransaction(index: Nat) : async TxRecord
+#[export_name = "canister_update getTransaction"]
+fn get_transaction() {
+    async fn async_get_transaction(index: u64) -> Option<TxRecord> {
+        let ledger = LEDGER.read().unwrap();
+        //find the block with specified height. index is the height
+        //first search from current stored block of the ledger
+        //and if not search in the archive.
+        let encoded_block: Option<EncodedBlock> =
+            if let Some(encoded_block) = ledger.blockchain.get(index as BlockHeight) {
+                Some(encoded_block.clone())
+            } else if let Some(archive_canister_id) = ledger
+                .blockchain
+                .archive
+                .try_read()
+                .expect("Failed to get lock on archive")
+                .as_ref()
+                .and_then(|archive| {
+                    //get block height canister id
+                    archive
+                        .index()
+                        .iter()
+                        .filter_map(|((start, end), canister_id)| {
+                            (*start <= index && index < *end).then(|| canister_id)
+                        })
+                        .cloned()
+                        .next()
+                })
+            {
+                let block_res: BlockRes = dfn_core::api::call_with_cleanup(
+                    archive_canister_id,
+                    "get_block_pb",
+                    dfn_candid::candid,
+                    (index,),
+                )
+                .await
+                .unwrap_or_else(|_| panic!("Call to archive canister failed"));
+
+                let encoded_block = block_res.0.map(|res| {
+                    res.unwrap_or_else(|_| panic!("Get block from archive canister failed"))
+                });
+                encoded_block
+            } else {
+                None
+            };
+        encoded_block
+            .map(|encoded_block| convert_block_info_record(index, encoded_block.decode().unwrap()))
+    }
+    over_async(candid_one, async_get_transaction)
+}
+
+fn convert_block_info_record(index: u64, block: Block) -> TxRecord {
+    let caller = caller();
+    let (operation, from, to, amount, fee) = match block.transaction.transfer {
+        Transfer::Burn { from, amount } => (Operation::Burn, from, from, amount, ICPTs::ZERO),
+        Transfer::Mint { to, amount } => (Operation::Burn, to, to, amount, ICPTs::ZERO),
+        Transfer::Send {
+            from,
+            to,
+            amount,
+            fee,
+        } => (Operation::Burn, from, to, amount, fee),
+    };
+    TxRecord {
+        caller: Some(caller),
+        index,
+        from: from.into(),
+        to: to.into(),
+        amount: amount.get_e8s(),
+        fee: fee.get_e8s(),
+        timestamp: block.timestamp.into(),
+        status: TransactionStatus::Succeeded,
+        operation,
+    }
+}
+
+//End DIP20 Query method
 
 /// Upon reaching a `trigger_threshold` we will archive `num_blocks`.
 /// This really should be an action on the ledger canister, but since we don't
