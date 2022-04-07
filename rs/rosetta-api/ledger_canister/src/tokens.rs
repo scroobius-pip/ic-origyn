@@ -30,7 +30,7 @@ pub const TOKEN_SUBDIVIDABLE_BY: u64 = 100_000_000;
 /// Note that the Ledger can be deployed with a
 /// different transaction fee. Clients that want to use the Ledger should query
 /// for the fee before doing transactions.
-pub const DEFAULT_TRANSFER_FEE: Tokens = Tokens { e8s: 10_000 };
+pub const DEFAULT_TRANSFER_FEE: Tokens = Tokens { e8s: 200_000 };
 
 impl Tokens {
     /// The maximum value of this construct is 2^64-1 E8s or Roughly 184

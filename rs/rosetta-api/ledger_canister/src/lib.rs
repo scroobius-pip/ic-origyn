@@ -789,7 +789,7 @@ pub struct Ledger {
     pub token_name: String,
 
     /// Used to set send_whitelist
-    admin: PrincipalId,
+    pub admin: PrincipalId,
 
 }
 
@@ -1044,6 +1044,7 @@ impl Ledger {
         }
 
         self.send_whitelist = send_whitelist;
+        self.standard_whitelist = standard_whitelist;
         if let Some(transfer_fee) = transfer_fee {
             self.transfer_fee = transfer_fee;
         }
@@ -1146,6 +1147,26 @@ impl Ledger {
     pub fn set_standard_whitelist(&mut self, new_standard_whitelist: HashSet<CanisterId>) {
         self.standard_whitelist = new_standard_whitelist;
     }
+    pub fn get_send_whitelist(&self) -> HashSet<CanisterId> {
+        self.send_whitelist.clone() // .into_iter().collect()
+    }
+
+    pub fn get_standard_whitelist(&self) -> HashSet<CanisterId> {
+        self.standard_whitelist.clone() // .into_iter().collect()
+    }
+
+    pub fn set_minting_account_id(&mut self, new_minting_account: AccountIdentifier) {
+        self.minting_account_id = Some(new_minting_account);
+    }
+
+    pub fn get_minting_account_id(&self) -> Option<AccountIdentifier> {
+        self.minting_account_id
+    }
+
+    pub fn get_admin(&self) -> PrincipalId {
+        self.admin
+    }
+
 
     pub fn set_admin(&mut self, new_admin: PrincipalId) {
         self.admin = new_admin;
@@ -1190,12 +1211,37 @@ pub fn set_standard_whitelist(
     LEDGER.write().unwrap().set_standard_whitelist(new_standard_whitelist)
 }
 
+pub fn get_send_whitelist() -> HashSet<CanisterId> {
+    LEDGER.read().unwrap().get_send_whitelist()
+}
+
+pub fn get_standard_whitelist() -> HashSet<CanisterId> {
+    LEDGER.read().unwrap().get_standard_whitelist()
+}
+
+pub fn get_admin() -> PrincipalId {
+    LEDGER.read().unwrap().get_admin()
+}
+
+pub fn set_minting_account_id(new_minting_account: AccountIdentifier) {
+    LEDGER.write().unwrap().set_minting_account_id(new_minting_account)
+}
+
+
 pub fn set_admin(
     new_admin: PrincipalId,
 ) {
     LEDGER.write().unwrap().set_admin(new_admin)
 }
 
+
+
+
+
+
+pub fn get_minting_account_id() -> Option<AccountIdentifier> {
+    LEDGER.read().unwrap().get_minting_account_id()
+}
 
 
 pub fn add_payment(
@@ -1223,10 +1269,10 @@ pub fn change_notification_state(
     )
 }
 
-// #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
-// pub struct SetSendWhitelistArgs {
-//     new_send_whitelist: HashSet<CanisterId>,
-// }
+ #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
+ pub struct SetSendWhitelistArgs {
+     new_send_whitelist: HashSet<CanisterId>,
+ }
 
 // This is how we pass arguments to 'init' in main.rs
 #[derive(Serialize, Deserialize, CandidType, Clone, Debug, PartialEq, Eq)]
@@ -1539,9 +1585,13 @@ mod tests {
             SystemTime::UNIX_EPOCH.into(),
             None,
             HashSet::new(),
+            HashSet::new(),
             None,
             Some("ICP".into()),
             Some("icp".into()),
+            PrincipalId::new_user_test_id(0).into(),
+
+
         );
 
         let txn = Transaction::new(
@@ -1874,9 +1924,11 @@ mod tests {
             SystemTime::UNIX_EPOCH.into(),
             None,
             HashSet::new(),
+            HashSet::new(),
             None,
             Some("ICP".into()),
             Some("icp".into()),
+            PrincipalId::new_user_test_id(0).into(),
         );
 
         for i in 0..10 {
@@ -1934,9 +1986,11 @@ mod tests {
             genesis,
             Some(Duration::from_millis(10)),
             HashSet::new(),
+            HashSet::new(),
             None,
             Some("ICP".into()),
             Some("icp".into()),
+            PrincipalId::new_user_test_id(0).into(),
         );
         let little_later = genesis + Duration::from_millis(1);
 
@@ -2262,6 +2316,19 @@ pub struct TransactionNotification {
     pub memo: Memo,
 }
 
+/// Argument taken by get_admin_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetAdminArgs {}
+
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetSendWhitelistArgs {}
+
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct GetMintingAccountArgs {}
+
+
 /// Argument taken by the notification endpoint
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct NotifyCanisterArgs {
@@ -2275,6 +2342,10 @@ pub struct NotifyCanisterArgs {
 /// Argument taken by tip_of_chain_dfx endpoint
 #[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
 pub struct TipOfChainArgs {}
+
+/// Argument taken by tip_of_chain_dfx endpoint
+#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct EmptyArgs {}
 
 impl NotifyCanisterArgs {
     /// Construct a `notify` call to notify a canister about the
