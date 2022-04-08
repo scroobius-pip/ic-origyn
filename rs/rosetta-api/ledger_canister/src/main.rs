@@ -769,11 +769,11 @@ fn get_transaction() {
                     (index,),
                 )
                 .await
-                .unwrap_or_else(|_| panic!("Call to archive canister failed"));
+                .expect("Call to archive canister failed");
 
-                let encoded_block = block_res.0.map(|res| {
-                    res.unwrap_or_else(|_| panic!("Get block from archive canister failed"))
-                });
+                let encoded_block = block_res
+                    .0
+                    .map(|res| res.expect("Get block from archive canister failed"));
                 encoded_block
             } else {
                 None
