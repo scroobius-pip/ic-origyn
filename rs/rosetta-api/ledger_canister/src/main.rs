@@ -543,6 +543,9 @@ fn post_upgrade() {
             .expect("Decoding stable memory failed");
 
         ledger.maximum_number_of_accounts = 28_000_000;
+        //Force token data to OGY
+        ledger.token_symbol = "OGY".to_string();
+        ledger.token_name = "Origyn".to_string();
 
         set_certified_data(
             &ledger
