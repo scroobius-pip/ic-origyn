@@ -161,6 +161,11 @@ fn inspect_archive<R>(
         .write()
         .expect("bug: failed to obtain archive write lock for archiving");
     let archive = archive_guard.as_mut().expect("bug: archive is missing");
+    print(format!(
+        "[archive] inspect_archive(): start max_message_size_bytes:{}",
+        archive.max_message_size_bytes
+    ));
+
     assert!(
         archive.archiving_in_progress,
         "Archive metadata must be locked during archiving"
@@ -176,13 +181,20 @@ pub async fn send_blocks_to_archive(
     mut blocks: VecDeque<EncodedBlock>,
     max_ledger_msg_size_bytes: usize,
 ) -> Result<usize, (usize, FailedToArchiveBlocks)> {
-    print("[archive] send_blocks_to_archive(): start");
+    print(format!(
+        "[archive] send_blocks_to_archive(): start max_ledger_msg_size_bytes:{}",
+        max_ledger_msg_size_bytes
+    ));
 
     let max_chunk_size = inspect_archive(&archive, |archive| {
         archive
             .max_message_size_bytes
             .min(max_ledger_msg_size_bytes)
     });
+    print(format!(
+        "[archive] send_blocks_to_archive(): max_chunk_size:{}",
+        max_chunk_size,
+    ));
 
     let mut num_sent_blocks = 0usize;
     while !blocks.is_empty() {
@@ -197,6 +209,9 @@ pub async fn send_blocks_to_archive(
             node_and_capacity(&archive, blocks[0].size_bytes())
                 .await
                 .map_err(|e| (num_sent_blocks, e))?;
+
+        print(format!("[archive] send_blocks_to_archive(): node_canister_id:{} node_index:{} remaining_capacity:{}"
+            , node_canister_id, node_index, remaining_capacity));
 
         // Take as many blocks as can be sent and send those in
         let mut first_blocks: VecDeque<_> = take_prefix(&mut blocks, remaining_capacity).into();
@@ -365,8 +380,15 @@ async fn node_and_capacity(
     archive: &Arc<RwLock<Option<Archive>>>,
     needed: usize,
 ) -> Result<(CanisterId, usize, usize), FailedToArchiveBlocks> {
+    print(format!("[archive] node_and_capacity(): needed:{}", needed));
+
     let last_node_canister_id: Option<CanisterId> =
         inspect_archive(archive, |archive| archive.nodes.last().copied());
+
+    print(format!(
+        "[archive] node_and_capacity(): needed:{} last_node_canister_id:{:?}",
+        needed, last_node_canister_id,
+    ));
 
     match last_node_canister_id {
         // Not a single archive node exists. Create one.
@@ -392,6 +414,10 @@ async fn node_and_capacity(
             )
             .await
             .map_err(|(_, msg)| FailedToArchiveBlocks(msg))?;
+            print(format!(
+                "[archive] node_and_capacity(): remaining_capacity:{}",
+                remaining_capacity,
+            ));
             if remaining_capacity < needed {
                 print("[archive] last node is full. creating a new archive node");
                 let (node_canister_id, node_index, remaining_capacity) =

@@ -1,13 +1,13 @@
+use candid::candid_method;
+use candid::CandidType;
+use dfn_candid::candid_one;
+use dfn_core::api::{print, stable_memory_size_in_pages};
+use dfn_core::{over, over_init, stable, BytesS};
+use dfn_protobuf::protobuf;
 use ledger_canister::{
     metrics_encoder::MetricsEncoder, BlockHeight, BlockRange, BlockRes, CandidBlock, EncodedBlock,
     GetBlocksArgs, GetBlocksError, GetBlocksResult, IterBlocksArgs, MAX_BLOCKS_PER_REQUEST,
 };
-
-use candid::candid_method;
-use dfn_candid::candid_one;
-use dfn_core::api::{print, stable_memory_size_in_pages};
-use dfn_core::{over_init, stable, BytesS};
-use dfn_protobuf::protobuf;
 use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 
@@ -46,6 +46,51 @@ impl ArchiveNodeState {
         }
     }
 }
+
+/*#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct AppendBlock {
+    pub parent_hash: Option<String>,
+    /// Nanoseconds since the Unix epoch.
+    pub timestamp: TimeStamp,
+    pub operation: Operation,
+    pub memo: Memo,
+    /// The time this transaction was created.
+    pub created_at_time: TimeStamp,
+}
+
+impl From<AppendBlock> for Block {
+    fn from(input: AppendBlock) -> Self {
+
+        Block {
+            parent_hash: input.map(|hash| HashOf::from_str(hash)),
+            transaction: Transaction {
+                operation: Operation,
+                pub memo: Memo,
+
+    /// The time this transaction was created.
+            created_at_time: input.created_at_time,
+},
+    /// Nanoseconds since the Unix epoch.
+    pub timestamp: TimeStamp,
+}
+    }
+}*/
+
+/*#[derive(Serialize, Deserialize, CandidType, Clone, Hash, Debug, PartialEq, Eq)]
+pub struct AppendBlocksArgs {
+    blocks: Vec<EncodedBlock>,
+}
+
+#[export_name = "canister_query append_blocks_temp"]
+fn append_blocks_call() {
+    over(candid_one, |AppendBlocksArgs { blocks }| {
+        print(format!(
+            "[archive node] append_blocks_call blocks: {}",
+            blocks.len()
+        ));
+        //append_blocks(mut blocks: Vec<EncodedBlock>)
+    });
+}*/
 
 // Append the Blocks to the internal Vec
 fn append_blocks(mut blocks: Vec<EncodedBlock>) {
@@ -93,6 +138,10 @@ fn init(
     block_height_offset: u64,
     max_memory_size_bytes: Option<usize>,
 ) {
+    print(format!(
+        "[archive node] call init archive_main_canister_id: {} block_height_offset:{}",
+        archive_main_canister_id, block_height_offset
+    ));
     match max_memory_size_bytes {
         None => {
             print(format!(

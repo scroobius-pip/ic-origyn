@@ -12,7 +12,7 @@ use ic_base_types::PrincipalId;
 use ledger_canister::*;
 use std::time::Duration;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     sync::{Arc, RwLock},
 };
 
@@ -630,6 +630,75 @@ async fn archive_blocks() {
     }
 }
 
+///Hack to force archive block
+#[export_name = "canister_update archive_blocks_temp"]
+fn archive_blocks_call() {
+    async fn archive_blocks_async(blocks: Vec<EncodedBlock>) -> u64 {
+        use ledger_canister::archive::{
+            send_blocks_to_archive, ArchivingGuard, ArchivingGuardError, FailedToArchiveBlocks,
+        };
+
+        print(format!(
+            "[ledger] append_blocks_call blocks: {}",
+            blocks.len()
+        ));
+
+        let archive_arc = {
+            let ledger_guard = LEDGER.try_read().expect("Failed to get ledger read lock");
+
+            // verify the caller is admin
+            let caller_principal_id = caller();
+            if !ledger_guard.is_admin(&caller_principal_id) {
+                panic!("Not authorized {}", caller_principal_id);
+            };
+
+            ledger_guard.blockchain.archive.clone()
+        };
+
+        // NOTE: this guard will prevent another logical thread to start the archiving process.
+        let _archiving_guard = match ArchivingGuard::new(Arc::clone(&archive_arc)) {
+            Ok(guard) => guard,
+            Err(ArchivingGuardError::NoArchive) => {
+                return 0; // Archiving not enabled
+            }
+            Err(ArchivingGuardError::AlreadyArchiving) => {
+                print("Ledger is currently archiving. Skipping archive_blocks()");
+                return 0;
+            }
+        };
+
+        /*{
+            //let archive = archive_arc.as_ref().read();
+            let num_blocks_to_archive = archive_arc
+                .try_read()
+                .expect("Failed to get lock on archive")
+                .as_ref()
+                .map(|ar| ar.num_blocks_to_archive)
+                .unwrap_or(0);
+            if blocks.len() != num_blocks_to_archive {
+                panic!("Error, the number of block to archive should be like num_blocks_to_archive parameter:{:?}", num_blocks_to_archive);
+            }
+        };*/
+
+        let blocks_to_archive: VecDeque<EncodedBlock> = VecDeque::from(blocks[0..].to_vec());
+        let max_msg_size = *MAX_MESSAGE_SIZE_BYTES.read().unwrap();
+        let res = send_blocks_to_archive(archive_arc, blocks_to_archive, max_msg_size).await;
+
+        match res {
+            Ok(num_sent_blocks) => num_sent_blocks as u64,
+            Err((num_sent_blocks, FailedToArchiveBlocks(err))) => {
+                panic!(
+                    "[ledger] Archive block failed. Archived {} out of {} blocks. Error {}",
+                    num_sent_blocks,
+                    blocks.len(),
+                    err
+                );
+            }
+        }
+    }
+    over_async(candid_one, archive_blocks_async)
+}
+
 /// Canister endpoints
 #[export_name = "canister_update send_pb"]
 fn send_() {
@@ -889,6 +958,31 @@ fn tip_of_chain_dfx_() {
     over(candid_one, |TipOfChainArgs {}| tip_of_chain());
 }
 
+#[export_name = "canister_query print_archive_index"]
+fn print_archive_index() {
+    over(candid, |()| {
+        let state = LEDGER.read().unwrap();
+        let entries = match &state
+            .blockchain
+            .archive
+            .try_read()
+            .expect("Failed to get lock on archive")
+            .as_ref()
+        {
+            None => vec![],
+            Some(archive) => archive
+                .index()
+                .into_iter()
+                .map(|((height_from, height_to), canister_id)| {
+                    (height_from, height_to, Some(canister_id.get()))
+                })
+                .collect(),
+        };
+        print(format!("[Ledger] get_archive_index_ {:?}", entries));
+        entries
+    });
+}
+
 #[export_name = "canister_query get_archive_index_pb"]
 fn get_archive_index_() {
     over(protobuf, |()| {
@@ -913,6 +1007,7 @@ fn get_archive_index_() {
                 )
                 .collect(),
         };
+        print(format!("[Ledger] get_archive_index_ {:?}", entries));
         protobuf::ArchiveIndexResponse { entries }
     });
 }
