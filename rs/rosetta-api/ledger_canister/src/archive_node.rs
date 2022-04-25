@@ -1,8 +1,7 @@
 use candid::candid_method;
-use candid::CandidType;
 use dfn_candid::candid_one;
 use dfn_core::api::{print, stable_memory_size_in_pages};
-use dfn_core::{over, over_init, stable, BytesS};
+use dfn_core::{over_init, stable, BytesS};
 use dfn_protobuf::protobuf;
 use ledger_canister::{
     metrics_encoder::MetricsEncoder, BlockHeight, BlockRange, BlockRes, CandidBlock, EncodedBlock,
